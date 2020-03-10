@@ -1,13 +1,16 @@
 import re
 
-dict = 'XqQrRlLcCfFmM()'
+dict = 'XqQrRlLcCfFmM()iI,ST'
 
 def parseGenFile(path):
     f = open(path, 'r')
     text = f.read()
-    genos = re.findall(r":\~\n[^\n]+\~", text, re.U)
+    genos = re.findall(r"genotype:[^\n]+\n", text, re.U)
+    #genos = re.findall(r":\~\n[^\n]+\~", text, re.U)
     for i in range( len(genos)):
-        genos[i] = genos[i][3:-1]
+        #genos[i] = genos[i][3:-1]
+        genos[i] = genos[i][9:-1]
+        genos[i] = 'S' + genos[i] + 'T'
     return genos
 
 def limitDict(genos, dict):
@@ -17,7 +20,7 @@ def limitDict(genos, dict):
 
 
 def testGenos():
-    genos = parseGenFile("encoding_f1_best.gen")
+    genos = parseGenFile("customGens.gen")
 
     genos = limitDict(genos, dict)
     return genos
