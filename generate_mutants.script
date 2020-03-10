@@ -1,0 +1,52 @@
+script:
+name:Generate mutants
+help:~
+Two-stage process that allows you to balance diversity and adjust "topology" of mutation sequences.
+See script source to adjust parameters.~
+code:~
+function main()
+{
+	main_args("1", 50, 10, 50, 20);
+}
+
+function main_args(GENETIC_FORMAT, STAR_STAGE_1_COUNT, STAR_STAGE_1_LEN, STAR_STAGE_2_COUNT, STAR_STAGE_2_LEN)
+{
+	//STAR_STAGE_1_COUNT=100 //mutation steps in sequence starting from the simplest (these genotypes are not added to gene pool)
+	//STAR_STAGE_1_LEN=20 //how many mutations in sequence
+	//STAR_STAGE_2_COUNT=10 //mutants of the last genotype from the sequence above (these are added)
+	//STAR_STAGE_2_LEN=3 //how many mutations in sequence
+
+	//you will get 1 simplest + STAR_STAGE_1_COUNT*(1+STAR_STAGE_2_COUNT) mutant genotypes. For STAR_STAGE_2_COUNT=10:
+	//
+	//
+	//               \    |    /
+	//                simplest -
+	//                  |   |  \
+	//                          \
+	//                           \   g1  g2  g3
+	//                            \  |  |   /
+	//                       end-of-sequence - g4
+	//                      /  |  |  |   |  \
+	//                   g10  g9 g8  g7 g6  g5
+	
+	var genepool=GenePools[0]; //use first group of genotypes (first gene pool)
+	genepool.clear();
+	genepool.add(GenMan.getSimplest(GENETIC_FORMAT)); //the simplest is always #0 in the pool
+	for(var i=0;i<STAR_STAGE_1_COUNT;i++)
+	{
+		var g=genepool.add(genepool[0].geno); //copy the simplest genotype
+		for(var _=0;_<STAR_STAGE_1_LEN;_++)
+			g.mutate(); //mutate the simplest genotype STAR_STAGE_1_LEN times
+		g.name="mutant %d" % i; //set its name to uniqe "star topology id"
+		var last=genepool.size-1;
+		for(var j=0;j<STAR_STAGE_2_COUNT;j++)
+		{
+			var g=genepool.add(genepool[last].geno); //copy the last in sequence
+			for(var _=0;_<STAR_STAGE_2_LEN;_++)
+				g.mutate(); //mutate the last-in-sequence genotype STAR_STAGE_1_LEN times
+			g.name="mutant %d-%d" % i % j; //set its name to uniqe "star topology id"
+		}
+	}
+}
+
+~
