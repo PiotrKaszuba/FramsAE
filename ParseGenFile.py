@@ -19,8 +19,8 @@ def limitDict(genos, dict):
     return genos
 
 
-def testGenos():
-    genos = parseGenFile("customGens.gen")
+def testGenos(name="customGens.gen"):
+    genos = parseGenFile(name)
 
     genos = limitDict(genos, dict)
     return genos
