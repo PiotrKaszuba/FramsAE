@@ -61,7 +61,7 @@ def prepareToolbox(frams_cli, genetic_format):
 	toolbox.register("evaluate", frams_evaluate, frams_cli)
 	toolbox.register("mate", frams_crossover, frams_cli)
 	toolbox.register("mutate", frams_mutate, frams_cli)
-	if len(OPTIMIZATION_CRITERIA) > 1:
+	if len(OPTIMIZATION_CRITERIA) == 1:
 		toolbox.register("select", tools.selTournament, tournsize=5)
 	else:
 		toolbox.register("select", tools.selNSGA2)
@@ -93,7 +93,7 @@ if __name__ == "__main__":
 
 	toolbox = prepareToolbox(framsCLI, '1' if representation is None else representation)
 
-	POPSIZE = 100
+	POPSIZE = 30
 	GENERATIONS = 100
 
 	pop = toolbox.population(n=POPSIZE)

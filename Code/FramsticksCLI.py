@@ -1,3 +1,6 @@
+#### ORIGINAL SOURCE IS UNDER: https://www.framsticks.com/svn/framsticks/framspy/ ###############################
+
+
 from subprocess import Popen, PIPE, check_output
 from enum import Enum
 from typing import List
