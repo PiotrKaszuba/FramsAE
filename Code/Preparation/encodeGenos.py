@@ -1,10 +1,10 @@
 import numpy as np
 from sklearn.preprocessing import LabelEncoder
 from sklearn.preprocessing import OneHotEncoder
-from ParseGenFile import dict, testGenos
+from Code.Preparation.ParseGenFile import testGenos
 
 
-oneHot = False
+
 
 def encodeGenos(genos, encoders, oneHot):
     return [oneHotEncode(genos[i], encoders, oneHot) for i in range(len(genos))]
@@ -19,7 +19,7 @@ def prepareEncoders(dict):
 
     onehot_encoder = OneHotEncoder(sparse=False)
     integer_encoded = integer_encoded.reshape(len(integer_encoded), 1)
-    onehot_encoded = onehot_encoder.fit_transform(integer_encoded)
+    onehot_encoder.fit(integer_encoded)
 
     return label_encoder, onehot_encoder
 
