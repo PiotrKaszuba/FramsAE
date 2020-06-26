@@ -73,16 +73,19 @@ trans = plt.gca().transData
 f1Df = df[df['representation'] == 'f1']
 f4Df = df[df['representation'] == 'f4']
 f9Df = df[df['representation'] == 'f9']
-f1=ax.scatter(f1Df['directions'], f1Df['cells'], f1Df['layers'], s=f1Df['smoothed_acc'].astype(np.float64)*120, transform=trans+offset(-12), alpha=1.0)
-f4=ax.scatter(f4Df['directions'], f4Df['cells'], f4Df['layers'],s=f4Df['smoothed_acc'].astype(np.float64)*120, transform=trans+offset(0), alpha=1.0)
-f9=ax.scatter(f9Df['directions'], f9Df['cells'], f9Df['layers'],s=f9Df['smoothed_acc'].astype(np.float64)*120, transform=trans+offset(+12), alpha=1.0)
+f1=ax.scatter(f1Df['directions'], f1Df['cells'], f1Df['layers'], s=f1Df['smoothed_acc'].astype(np.float64)*120, transform=trans+offset(-12))
+f4=ax.scatter(f4Df['directions'], f4Df['cells'], f4Df['layers'],s=f4Df['smoothed_acc'].astype(np.float64)*120, transform=trans+offset(0))
+f9=ax.scatter(f9Df['directions'], f9Df['cells'], f9Df['layers'],s=f9Df['smoothed_acc'].astype(np.float64)*120, transform=trans+offset(+12))
 plt.legend((f1,f4,f9),
            ('f1', 'f4', 'f9'),
            scatterpoints=1,
-           loc='lower left',
+           loc='lower right',
            ncol=3,
            fontsize=8)
-
+ax.set_title("Relative accuracy of LSTM Autoencoders (radius of dot)")
+ax.set_xlabel("Encoder LSTM mode")
+ax.set_zlabel("LSTM layers")
+ax.set_ylabel("LSTM cells")
 ax.set_xticks(np.arange(3))
 ax.set_xticklabels(dirEncoder.classes_)
 

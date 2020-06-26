@@ -1,13 +1,14 @@
 import os
 
-import pandas as pd
 import numpy as np
 from deap import creator, base, tools, algorithms
 
-from Code.FramsticksCLI import FramsticksCLI
-from Code.Preparation.Run_preparation import EvolutionModel, prepareGenos, extractIthGenotypeFromEncoderPred, splitLatentToHiddenAndCell
-from Code.Preparation.configuration import get_config
-from Code.Preparation.Utils import extract_fram
+from FramsticksCLI_importSim import FramsticksCLI
+import glob
+import pickle
+from Run_preparation_slurm import EvolutionModel, prepareGenos, extractIthGenotypeFromEncoderPred, splitLatentToHiddenAndCell
+from configuration import get_config
+from Utils import extract_fram
 # Note: this is much less efficient than running the evolution directly in Framsticks, so use only when required or when poor performance is acceptable!
 
 
@@ -76,10 +77,10 @@ def get_fram(individual_temp, evolution_model):
 def frams_mutate(frams_cli, evolution_model : EvolutionModel, individual):
     inner_ind = np.copy(individual[0])
     for i in range(5):
-        magnitude=0.005*np.random.randint(1,5)
-        if i > 0:
-            magnitude *= 2*i
-        individual_temp = evolution_model.mutate(np.array([inner_ind]), times=np.random.randint(1,3), magnitude=magnitude)
+        magnitude=0.005*np.random.randint(1,6)
+        # if i > 0:
+        #     magnitude *= 2*i
+        individual_temp = evolution_model.mutate(np.array([inner_ind]), times=1, magnitude=magnitude)
 
         fram = get_fram(individual_temp, evolution_model)
         valid = frams_cli.isValid(fram)
@@ -153,50 +154,67 @@ def ensureDir(string):
         raise NotADirectoryError(string)
 
 
-def create_config():
+def create_config(data_path, load_dir):
     representation = 'f1'
     cells = 64
     long_genos = None
     twoLayer = 'oneLayer'
     bidir = 'Bidir'
 
-    load_dir = 'newGenos'
 
     model_name = 'model_' + representation + '_' + str(long_genos) + '_' + str(cells) + '_' + twoLayer + '_' + bidir
 
-    model_path = os.path.join('dataFolder', model_name)
+    data_path = list(os.path.split(data_path))
+
+    data_path = os.path.join(data_path[0], model_name)
     max_len = 100
-    config = get_config(model_name, representation, long_genos, cells, twoLayer, bidir, model_path, load_dir,
+    config = get_config(model_name, representation, long_genos, cells, twoLayer, bidir, data_path, load_dir,
                         max_len=max_len)
     # config['features'] = 21
 
     return config
 
 
-if __name__ == "__main__":
+def runEvolLatent(evol_name, representation, data_path, load_dir, frams_path):
     # A demo run: optimize OPTIMIZATION_CRITERIA
+    # find max logbook
+    evol_path_name = os.path.join(data_path, evol_name)
+    iteration = -1
+    files = []
+    for filename in glob.glob(os.path.join(data_path, "logbook_*")):
+        try:
+            files.append((filename, int(filename.split('_')[-1])))
+        except:
+            pass
 
+    files = list(set(files))
+
+    if len(files) > 0:
+        files = sorted(files, key=lambda x: x[1], reverse=True)
+        iteration = int(files[0][1])
     # random.seed(123)  # see FramsticksCLI.DETERMINISTIC below, set to True if you want full determinism
 
-    config = create_config()
+    config = create_config(data_path, load_dir)
     EM = EvolutionModel(config)
 
     FramsticksCLI.DETERMINISTIC = False  # must be set before FramsticksCLI() constructor call
-    representation = EM.config['representation'][1:]
-    framsCLI = FramsticksCLI('C:/Users/Piotr/Desktop/Framsticks50rc14', None)
-
+    representation = representation[1:]
+    framsCLI = FramsticksCLI(frams_path, None, outer_writing_path=None)
+    framsCLI.PRINT_FRAMSTICKS_OUTPUT = True
+    framsCLI.rawCommand('Simulator.import(\"generation_params.sim\");')
+    framsCLI.PRINT_FRAMSTICKS_OUTPUT = False
     toolbox = prepareToolbox(framsCLI, '1' if representation is None else representation, EM)
 
     POPSIZE = 50
-    GENERATIONS = 50
-    iterations = 20
+    GENERATIONS = 1000
+    iterations = 10
     import sys
 
 
-    iteration = -1
+
     while iteration < iterations-1:
         iteration += 1
-        with open('evolution_experiments_latent/experiment_outFile_%s' % str(iteration), 'w') as outF:
+        with open(os.path.join(data_path,'experiment_outFile_%s' % str(iteration)), 'w') as outF:
             sys.stdout = outF
 
 
@@ -219,7 +237,7 @@ if __name__ == "__main__":
                 try:
                     pop, log = algorithms.eaSimple(pop, toolbox, cxpb=0.15, mutpb=0.85, ngen=GENERATIONS, stats=stats,
                                                    halloffame=hof,
-                                                   verbose=True, logbook=log)
+                                                   verbose=True)
                 except Exception as e:
                     print(e)
                     print("Error! Stopping!")
@@ -228,8 +246,8 @@ if __name__ == "__main__":
 
             pop, logbook = runAlg(pop, logbook)
 
-            df_log = pd.DataFrame(logbook)
-            df_log.to_csv('evolution_experiments_latent/logbook_%s' % str(iteration), index=False)
+            with open(os.path.join(data_path, 'logbook_%s' % str(iteration)), 'wb') as f:
+                pickle.dump(logbook, f)
 
             print('Best individuals:')
             for best in hof:

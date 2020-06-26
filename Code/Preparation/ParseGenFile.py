@@ -88,7 +88,7 @@ def testGenos(config, print_some_genos = False):
 
     return genos
 
-if __name__ == "__main__":
-    from Code.Preparation.configuration import get_config
-    config = get_config('', 'f4', 'short', 32, False, False, '', '')
-    testGenos(config, True)
+# if __name__ == "__main__":
+#     from Code.Preparation.configuration import get_config
+#     config = get_config('', 'f4', 'short', 32, False, False, '', '')
+#     testGenos(config, True)

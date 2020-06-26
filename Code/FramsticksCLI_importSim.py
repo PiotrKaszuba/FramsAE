@@ -4,12 +4,13 @@
 from subprocess import Popen, PIPE, check_output
 from enum import Enum
 from typing import List
+from itertools import count  # for tracking multiple instances
 import json
 import sys, os
 import argparse
 import numpy as np
 from functools import lru_cache
-
+import random
 
 import functools
 import weakref
@@ -29,7 +30,10 @@ def memoized_method(*lru_args, **lru_kwargs):
             return cached_method(*args, **kwargs)
         return wrapped_func
     return decorator
-
+def mkdir_p(dir):
+    '''make a directory (dir) if it doesn't exist'''
+    if not os.path.exists(dir):
+        os.mkdir(dir)
 class FramsticksCLI:
 	"""Runs Framsticks CLI (command-line) executable and communicates with it using standard input and output.
 	You can perform basic operations like mutation, crossover, and evaluation of genotypes.
@@ -52,27 +56,30 @@ class FramsticksCLI:
 	RANDOMIZE_CMD = "rnd" + "\n"
 	SETEXPEDEF_CMD = "expdef standard-eval" + "\n"
 	GETSIMPLEST_CMD = "getsimplest"
-	GETSIMPLEST_FILE = FILE_PREFIX + "simplest.gen"
+	GETSIMPLEST_FILE =  "simplest.gen"
 	EVALUATE_CMD = "evaluate eval-allcriteria.sim "
 	EVALUATE_FILE = "genos_eval.json"
 	CROSSOVER_CMD = "crossover"
-	CROSSOVER_FILE = FILE_PREFIX + "child.gen"
+	CROSSOVER_FILE =  "child.gen"
 	DISSIMIL_CMD = "dissimil"
-	DISSIMIL_FILE = FILE_PREFIX + "dissimilarity_matrix.gen"
+	DISSIMIL_FILE =  "dissimilarity_matrix.gen"
 	ISVALID_CMD = "isvalid"
-	ISVALID_FILE = FILE_PREFIX + "validity.gen"
+	ISVALID_FILE =  "validity.gen"
 	MUTATE_CMD = "mutate"
-	MUTATE_FILE = FILE_PREFIX + "mutant.gen"
+	MUTATE_FILE =  "mutant.gen"
 
 	CLI_INPUT_FILE = FILE_PREFIX + "genotypes.gen"
 
-
-	def __init__(self, framspath, framsexe, additional_commands : List = None):
+	_last_instance_id = count(0)  # "static" counter incremented when a new instance is created. Used for unique filenames
+	def __init__(self, framspath, framsexe, additional_commands : List = None, outer_writing_path = None, id = None):
+		if id is None:
+			id = random.randint(0,9999999)
+		self.id = id #next(FramsticksCLI._last_instance_id)
 		self.frams_path = framspath
 		self.frams_exe = framsexe if framsexe is not None else 'frams.exe' if os.name == "nt" else 'frams.linux'
 		self.writing_path = None
 		mainpath = os.path.join(self.frams_path, self.frams_exe)
-		exe_call = [mainpath, '-s', '-c', '-icliutils.ini']  # -c will be ignored in Windows Framsticks (this option is meaningless because the Windows version does not support color console, so no need to deactivate this feature using -c)
+		exe_call = [mainpath, '-Q', '-s', '-c', '-icliutils.ini']  # -c will be ignored in Windows Framsticks (this option is meaningless because the Windows version does not support color console, so no need to deactivate this feature using -c)
 
 		if additional_commands is not None:
 			exe_call.extend(additional_commands)
@@ -80,8 +87,8 @@ class FramsticksCLI:
 		exe_call_to_get_version = [mainpath, '-V']
 		exe_call_to_get_path = [mainpath, '-?']
 		try:
-			print("\n".join(self.__readAllOutput(" ".join(exe_call_to_get_version))))
-			help = self.__readAllOutput(" ".join(exe_call_to_get_path))
+			print("\n".join(self.__readAllOutput(exe_call_to_get_version)))
+			help = self.__readAllOutput(exe_call_to_get_path)
 			for helpline in help:
 				if 'dDIRECTORY' in helpline:
 					self.writing_path = helpline.split("'")[1]
@@ -115,10 +122,10 @@ class FramsticksCLI:
 		assert self.getSimplest("1") == "X"
 		print('OK.')
 		print('Performing a basic test 2/3... ', end='')
-		assert self.isValid("X[0:0]") == True
+		assert self.isValid("X[0:0]") is True
 		print('OK.')
 		print('Performing a basic test 3/3... ', end='')
-		assert self.isValid("X[0:0],") == False
+		assert self.isValid("X[0:0],") is False
 		print('OK.')
 		if not self.DETERMINISTIC:
 			self.child.sendline(self.RANDOMIZE_CMD)
@@ -130,29 +137,26 @@ class FramsticksCLI:
 		# Without -Q argument ("quiet mode"), Framsticks CLI would print "Shell closed." for goodbye.
 		self.child.sendline(chr(26 if os.name == "nt" else 4))
 
+	def __getPrefixedFilename(self, filename: str) -> str:
+		# Returns filename with unique instance id appended so there is no clash when many instances of this class use the same Framsticks CLI executable
+		return FramsticksCLI.FILE_PREFIX + str(self.id) + '_' + filename
 
-	def __saveGenotypeToFile(self, genotype, name, mode):
-		outpath = os.path.join(self.writing_path, name)
-		outfile = open(outpath, mode)
-		outfile.write("org:\n")
-		outfile.write("genotype:~\n")
-		outfile.write(genotype + "~\n\n")  # TODO proper quoting of genotype...
-		outfile.close()
-		return name
-
-
-	def __saveToFile(self, genotype, name, mode):
-		outpath = os.path.join(self.writing_path, name)
-		outfile = open(outpath, mode)
-		outfile.write(genotype)
-		outfile.close()
-		return name
-
-
-	def __removeFile(self, path):
-		filepath = os.path.join(self.writing_path, path)
-		if os.path.exists(filepath):
-			os.remove(filepath)
+	def __saveGenotypeToFile(self, genotype, name, mode, saveformat):
+		relname = self.__getPrefixedFilename(name)
+		absname = os.path.join(self.writing_path, relname)
+		if mode == 'd':  # special mode, 'delete'
+			if os.path.exists(absname):
+				os.remove(absname)
+		else:
+			outfile = open(absname, mode)
+			if saveformat == self.GENO_SAVE_FILE_FORMAT["RAWGENO"]:
+				outfile.write(genotype)
+			else:
+				outfile.write("org:\n")
+				outfile.write("genotype:~\n")
+				outfile.write(genotype + "~\n\n")  # TODO proper quoting of special characters in genotype...
+			outfile.close()
+		return relname, absname
 
 
 	def __readFromFramsCLIUntil(self, until_marker: str):
@@ -164,37 +168,38 @@ class FramsticksCLI:
 			if until_marker in msg:
 				break
 
-
 	def __runCommand(self, command, genotypes, result_file_name, saveformat) -> List[str]:
-		filenames = []  # list of file names with input data for the command
+		filenames_rel = []  # list of file names with input data for the command
+		filenames_abs = []  # same list but absolute paths actually used
 		if saveformat == self.GENO_SAVE_FILE_FORMAT["RAWGENO"]:
 			for i in range(len(genotypes)):
-				filenames.append(self.__saveToFile(genotypes[i], "genotype" + str(i) + ".gen", "w"))  # plain text format = must have a separate file for each genotype
+				# plain text format = must have a separate file for each genotype
+				rel, abs = self.__saveGenotypeToFile(genotypes[i], "genotype" + str(i) + ".gen", "w",self.GENO_SAVE_FILE_FORMAT["RAWGENO"])
+				filenames_rel.append(rel)
+				filenames_abs.append(abs)
 		elif saveformat == self.GENO_SAVE_FILE_FORMAT["NATIVEFRAMS"]:
-			self.__removeFile(self.CLI_INPUT_FILE)  # ensure there is nothing left from the last run of the program because we "a"ppend to file in the loop below
+			self.__saveGenotypeToFile(None, self.CLI_INPUT_FILE, 'd',None)  # 'd'elete: ensure there is nothing left from the last run of the program because we "a"ppend to file in the loop below
 			for i in range(len(genotypes)):
-				outfilename = self.__saveGenotypeToFile(genotypes[i], self.CLI_INPUT_FILE, "a")
-			filenames.append(outfilename)  # since we use the same file in the loop above, add this file only once (i.e., outside of the loop)
+				rel, abs = self.__saveGenotypeToFile(genotypes[i], self.CLI_INPUT_FILE, "a", self.GENO_SAVE_FILE_FORMAT["NATIVEFRAMS"])
+			#  since we use the same file in the loop above, add this file only once (i.e., outside of the loop)
+			filenames_rel.append(rel)
+			filenames_abs.append(abs)
 
-		if result_file_name != self.EVALUATE_FILE:  # all functions except for evaluate provide frams with the file name to write to
-			self.child.sendline(command + " " + " ".join(filenames) + " " + result_file_name + "\n")
-		else:
-			self.child.sendline(command + " " + " ".join(filenames) + "\n")
+		result_file_name = self.__getPrefixedFilename(result_file_name)
+		cmd = command + " " + " ".join(filenames_rel) + " " + result_file_name
+		self.child.sendline(cmd + '\n')
 		self.__readFromFramsCLIUntil(self.STDOUT_ENDOPER_MARKER)
-		filenames.append(os.path.join(self.writing_path, self.OUTPUT_DIR, result_file_name))
-		return filenames  # last element is a path to the file containing results
+		filenames_abs.append(os.path.join(self.writing_path, self.OUTPUT_DIR, result_file_name))
+		return filenames_abs  # last element is a path to the file containing results
 
 	def rawCommand(self, command, marker = "Simulator.load"):
 		self.child.sendline(command+"\n")
 		self.__readFromFramsCLIUntil(marker)
 
-	def __cleanUpCommandResults(self, filepaths):
-		"""Deletes files with results created by the command."""
-		for i in filepaths:
-			if i == filepaths[-1]:
-				os.remove(i)  # the result is written with its full path and we have used it before so the file surely exists
-			else:
-				self.__removeFile(i)
+	def __cleanUpCommandResults(self, filenames):
+		"""Deletes files with results just created by the command."""
+		for name in filenames:
+			os.remove(name)
 
 	@memoized_method(maxsize=5000)
 	def getSimplest(self, genetic_format) -> str:
@@ -213,7 +218,7 @@ class FramsticksCLI:
 			the dictionary you will get may be empty or partially empty and may not have the fields you expected, so handle such cases properly.
 		"""
 		files = self.__runCommand(self.EVALUATE_CMD, [genotype], self.EVALUATE_FILE, self.GENO_SAVE_FILE_FORMAT["NATIVEFRAMS"])
-		# self.rawCommand('Simulator.import(\"generation_params.sim\");')
+		self.rawCommand('Simulator.import(\"generation_params.sim\");')
 		with open(files[-1]) as f:
 			data = json.load(f)
 		if len(data) > 0:

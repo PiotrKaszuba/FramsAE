@@ -107,7 +107,7 @@ def validity_of_sampled(enc_predict_train, autoencoder_model):
 
 
 
-    howMany = 100
+    howMany = 2000
     uni1 = np.random.uniform(min1, max1, size=(howMany, autoencoder_model.config['cells']))
     uni2 = np.random.uniform(min2, max2, size=(howMany, autoencoder_model.config['cells']))
     decOnes = autoencoder_model.getOnesMaskForFullPrediction(howMany)
@@ -118,14 +118,14 @@ def validity_of_sampled(enc_predict_train, autoencoder_model):
     total_acc, xs, accs, ys = checkValidity(genos, howMany, autoencoder_model.config)
     plot_validitiy(xs, accs, ys, '', howMany, total_acc, 'UNIFORM_SAMPLE_FULL', suff='', config=autoencoder_model.config)
     #######################################################################
-    uni1 = np.random.uniform(min1, max1, size=(howMany, autoencoder_model.config['cells']))
-    uni2 = np.random.uniform(q12, q32, size=(howMany, autoencoder_model.config['cells']))
-
-    pred = autoencoder_model.decoder.predict([uni1, uni2, decOnes])
-    genos = autoencoder_model.get_genos(pred)
-
-    total_acc, xs, accs, ys = checkValidity(genos, howMany, autoencoder_model.config)
-    plot_validitiy(xs, accs, ys, '', howMany, total_acc, 'UNIFORM_SAMPLE_INTERQUARTILE', suff='', config=autoencoder_model.config)
+    # uni1 = np.random.uniform(min1, max1, size=(howMany, autoencoder_model.config['cells']))
+    # uni2 = np.random.uniform(q12, q32, size=(howMany, autoencoder_model.config['cells']))
+    #
+    # pred = autoencoder_model.decoder.predict([uni1, uni2, decOnes])
+    # genos = autoencoder_model.get_genos(pred)
+    #
+    # total_acc, xs, accs, ys = checkValidity(genos, howMany, autoencoder_model.config)
+    # plot_validitiy(xs, accs, ys, '', howMany, total_acc, 'UNIFORM_SAMPLE_INTERQUARTILE', suff='', config=autoencoder_model.config)
     ########################################################################
 
 

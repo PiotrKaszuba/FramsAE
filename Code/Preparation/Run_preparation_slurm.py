@@ -8,10 +8,10 @@ import tensorflow as tf
 
 pad_sequences = tf.keras.preprocessing.sequence.pad_sequences
 
-from Code.Preparation.ParseGenFile import testGenos
-from Code.Preparation.Utils import get_genSuff, RepresentsInt
-from Code.Preparation.createModel import createModel, load_weights
-from Code.Preparation.encodeGenos import encodeGenos, inverse
+from ParseGenFile import testGenos
+from Utils import get_genSuff, RepresentsInt
+from createModel import createModel, load_weights
+from encodeGenos import encodeGenos, inverse
 
 
 class EvolutionModel:
@@ -132,7 +132,6 @@ class EvolutionModel:
                 print("Loaded latent")
 
         self.data = prepareData(self.config)
-
         if self.cov is None or self.means is None or self.latent is None:
             self.latent = self.predictEncoderLatent(self.data[0])
             self.means = np.mean(self.latent, axis=0)
@@ -146,11 +145,10 @@ class EvolutionModel:
                 pickle.dump(self.latent, handle)
 
 
-
     def load_model_data(self):
         losses_path = None
         expected_epochs = None
-
+        print(self.model_path_name)
         if os.path.exists(self.model_path_name + '_losses' + '_tmp'):
             losses_path = self.model_path_name + '_losses' + '_tmp'
         else:

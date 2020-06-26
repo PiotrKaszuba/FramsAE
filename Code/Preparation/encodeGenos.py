@@ -1,7 +1,6 @@
 import numpy as np
 from sklearn.preprocessing import LabelEncoder
 from sklearn.preprocessing import OneHotEncoder
-from Code.Preparation.ParseGenFile import testGenos
 
 
 
@@ -53,13 +52,13 @@ def oneHotEncode(geno, encoders, oneHot=True):
     #print(onehot_encoded)
     return integer_encoded
 
-def testEncode(oneHot):
+# def testEncode(oneHot):
+#
+#     genos = testGenos()
+#     encoders = prepareEncoders(dict)
+#     genos_encoded = encodeGenos(genos, encoders, oneHot)
+#     genos_decoded = inverse(genos_encoded, encoders, oneHot)
+#     return genos_encoded, encoders
 
-    genos = testGenos()
-    encoders = prepareEncoders(dict)
-    genos_encoded = encodeGenos(genos, encoders, oneHot)
-    genos_decoded = inverse(genos_encoded, encoders, oneHot)
-    return genos_encoded, encoders
-
-if __name__ == "__main__":
-    testEncode(oneHot)
+# if __name__ == "__main__":
+#     testEncode(oneHot)
