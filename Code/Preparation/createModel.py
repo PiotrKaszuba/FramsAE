@@ -7,12 +7,36 @@ from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.regularizers import l1_l2
 import numpy as np
 from tensorflow.keras.initializers import he_normal, he_uniform
+import tensorflow as tf
 
-def createModel(max_len, features, dimsEmbed, lr, two_layer=False, bidir=False, cells=32, regularization_base=2e-6):
-    inp = Input(shape=(max_len,))
-    inp2 = Input(shape=(max_len,))
 
-    embedLayer = Embedding(features + 1, dimsEmbed, input_length=max_len, embeddings_initializer=he_uniform(2), mask_zero=True, name='inpEmbed1')
+# from tensorflow.keras.losses import categorical_crossentropy
+# def custom_loss(y_actual,y_pred):
+#     custom_loss=categorical_crossentropy(y_actual, y_pred)
+#     return custom_loss
+#
+
+
+from Code.Preparation.locality_term_prep import locality_term_op, locality1_op, locality2_op
+
+# def get_gradient_norm(model):
+#     with K.name_scope('gradient_norm'):
+#         grads = K.gradients(model.total_loss, model.trainable_weights)
+#         norm = K.sqrt(sum([K.sum(K.square(g)) for g in grads]))
+#     return norm
+
+
+
+def createModel(max_len, features, dimsEmbed, lr, two_layer=False, bidir=False, cells=32, regularization_base=2e-6, locality_term = False, batch_size = None, locality_power=1):
+    print(tf.executing_eagerly())
+    inp = Input(shape=(max_len,), name="inputs1")
+    inp2 = Input(shape=(max_len,), name="inputs2")
+
+    inp3 = Input(shape=(batch_size,batch_size), name="inputs3")
+
+
+
+    embedLayer = Embedding(features+1, dimsEmbed, input_length=max_len, embeddings_initializer=he_uniform(2), mask_zero=True, name='inpEmbed1')
     prev_layer = embedLayer(inp)
 
     embed2Layer = Embedding(2, cells, input_length=max_len, embeddings_initializer=he_uniform(3), mask_zero=True, trainable=False, name='inpEmbed2')
@@ -61,6 +85,11 @@ def createModel(max_len, features, dimsEmbed, lr, two_layer=False, bidir=False, 
                    bias_regularizer=l1_l2(regularization_base * 2.5, regularization_base * 2.5))
     c = cLayer(bn1)
 
+    if locality_term:
+        locality1 = Lambda(locality1_op)([h, c])
+        locality2 = Lambda(locality2_op)(inp3)
+        locality_layer = Lambda(locality_term_op)([locality1, locality2])
+
     decoderInpH = Input((cells,))
     decoderInpC = Input((cells,))
     decoderPrevInput = Input(((max_len, cells)))
@@ -85,14 +114,25 @@ def createModel(max_len, features, dimsEmbed, lr, two_layer=False, bidir=False, 
                           name='denseOut')(prev_layer)
 
     decoder = Model(inputs=[decoderInpH, decoderInpC, decoderPrevInput], outputs=out)
-    model = Model(inputs=[inp, inp2], outputs=decoder([h, c, embed2]))
+    model = Model(inputs=[inp, inp2, inp3], outputs=decoder([h, c, embed2]))
 
     model.summary()
     decoder.summary()
-    model.compile(optimizer=Adam(lr, clipnorm=0.5), loss='categorical_crossentropy')
-    decoder.compile(optimizer=Adam(lr, clipnorm=0.5), loss='categorical_crossentropy')
 
-    encoder = Model(inputs=[inp, inp2], outputs=[h, c, embed2])
+    if locality_term:
+        print("Using locality term! Locality power: " , locality_power)
+        locality_loss = (1-locality_layer)*tf.constant(locality_power)
+        model.add_loss(locality_loss)
+
+
+        model.add_metric(locality_loss, name='locality', aggregation='mean')
+    # model.add_metric(get_gradient_norm(model), name='locality', aggregation='mean')
+    # model.add_metric(locality_loss, name='localityS', aggregation='sum')
+    model.compile(optimizer=Adam(lr, clipnorm=1.0, clipvalue=0.5), loss='categorical_crossentropy')
+    decoder.compile(optimizer=Adam(lr, clipnorm=1.0, clipvalue=0.5), loss='categorical_crossentropy')
+    # model.metrics_tensors = []
+
+    encoder = Model(inputs=[inp, inp2, inp3], outputs=[h, c, embed2])
 
     return model, encoder, decoder
 

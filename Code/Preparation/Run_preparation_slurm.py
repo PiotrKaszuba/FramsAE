@@ -8,10 +8,10 @@ import tensorflow as tf
 
 pad_sequences = tf.keras.preprocessing.sequence.pad_sequences
 
-from ParseGenFile import testGenos
-from Utils import get_genSuff, RepresentsInt
-from createModel import createModel, load_weights
-from encodeGenos import encodeGenos, inverse
+from Code.Preparation.ParseGenFile import testGenos
+from Code.Preparation.Utils import get_genSuff, RepresentsInt
+from Code.Preparation.createModel import createModel, load_weights
+from Code.Preparation.encodeGenos import encodeGenos, inverse
 
 
 class EvolutionModel:

@@ -4,7 +4,10 @@ import numpy as np
 import re
 import seaborn as sns
 import matplotlib.pyplot as plt
-
+import glob
+import os
+import pickle
+from collections import Counter
 date_format = '%Y%m%d%H%M%S'
 
 def select_lines(file_name):
@@ -60,14 +63,14 @@ def select_lines(file_name):
         return df
 
 def fix_dtypes(df):
-    numerics = ['param', 'run', 'num_cr', 'num_gen', 'worst', 'avg', 'best']
-    dates = ['start', 'end']
+    numerics = [ 'run', 'num_cr', 'worst', 'avg', 'best']
+    # dates = ['start', 'end']
 
     for col in numerics:
         df[col] = pd.to_numeric(df[col])
-    for col in dates:
-        df[col] = pd.to_datetime(df[col], format='%Y-%m-%d %H:%M:%S')
-    df['time'] = pd.to_timedelta(df['time'])
+    # for col in dates:
+    #     df[col] = pd.to_datetime(df[col], format='%Y-%m-%d %H:%M:%S')
+    # df['time'] = pd.to_timedelta(df['time'])
     return df
 
 def plot_avg_fitness(df):
@@ -97,54 +100,78 @@ def plot_computation_time_for_parameterizations(df):
 def plot_multiline_fitness(df):
     sns.set(style='darkgrid')
     # tmp_df = df[df['param']==1]
-    for i, c in zip(df.param.unique(), ['Reds_r', 'Blues_r', 'Greens_r']):
+    #for i, c in zip(df.param.unique(), ['Reds_r', 'Blues_r', 'Greens_r', 'Reds_r']):
+    for i in df.param.unique():
         tmp_df = df[df['param']==i]
 
         palette = dict(zip(tmp_df.run.unique(),
-                           sns.color_palette(c, 15)))
+                           sns.color_palette('Blues_r', 15)))
+        # plt.figure(figsize=(15, 8))
         plot = sns.relplot(x='num_cr', y='best', palette=palette, #hue='run',
                 kind='line', data=tmp_df)
+        plot.fig.set_size_inches(14, 10)
         plot.set_axis_labels("Number of creatures tested", "Best score in current population")
-        if i==1:
-            plt.title("Number of creatures and their score for Latent-Decoder evolution")
-        else:
-            plt.title("Number of creatures and their score for f1 evolution")
 
-    plt.show()
+        plt.title("Number of creatures and their score for %s evolution" %i)
+
+        plt.savefig(os.path.join("plots/evol_plots",i+'_evol_plot.png'))
+        plt.clf()
+    # plt.show()
 
 def get_latent_df_scores():
     load = True
     num = -1
     # col_names = ['num_cr', 'num_gen', 'worst', 'avg', 'best']
     df = pd.DataFrame()
-    while load:
+    cnt = Counter()
+    for fname in glob.glob('evol_exp_lat/**/logbook_*', recursive=True):
+        dir, f = os.path.split(fname)
+        dir, name = os.path.split(dir)
         num += 1
+        print(fname)
+        with open(fname, 'rb') as ff:
+            logbook = pickle.load(ff)
         try:
-            df_temp = pd.read_csv('evolution_experiments_latent/logbook_'+str(num)).rename(columns={'max': 'best', 'min':'worst', 'nevals':'num_cr'})
+            df_temp = pd.DataFrame(logbook).rename(columns={'max': 'best', 'min':'worst', 'nevals':'num_cr'})
             df_temp['num_cr'] = df_temp['gen'] * 50
+            nam_base = '_'.join(name.split("_")[:-1])
+            # nam_base = 'f1' if 'nolatent' in name else 'latent'
+            # nam_base += '_random' if 'True' in name else ''
+            cnt[nam_base] += 1
+            df_temp['param'] = nam_base
             df_temp['run'] = 0
-            df_temp['param']=1
-            df  = pd.concat([df,df_temp], axis=0)
+            df = pd.concat([df, df_temp], axis=0)
         except:
-            load = False
-            continue
+            num -= 1
+    print(cnt)
+    # while load:
+    #     num += 1
+    #     try:
+    #         df_temp = pd.read_csv('evolution_experiments_latent/logbook_'+str(num)).rename(columns={'max': 'best', 'min':'worst', 'nevals':'num_cr'})
+    #         df_temp['num_cr'] = df_temp['gen'] * 50
+    #         df_temp['run'] = 0
+    #         df_temp['param']=1
+    #         df  = pd.concat([df,df_temp], axis=0)
+    #     except:
+    #         load = False
+    #         continue
     return df
 
 df_latent = get_latent_df_scores()
-df = select_lines('outputFile.txt')
-
-df = pd.concat([df, df_latent], axis=0)
-
+# df = select_lines('outputFile.txt')
+#
+# df = pd.concat([df, df_latent], axis=0)
+df = df_latent
 
 df = fix_dtypes(df)
 
-df_cp = df[df['param']==0].copy()
-df_cp['param'] = 2
-df_cp = df_cp[df_cp['num_cr']<2500]
-df = pd.concat([df, df_cp], axis=0)
+# df_cp = df[df['param']==0].copy()
+# df_cp['param'] = 2
+# df_cp = df_cp[df_cp['num_cr']<2500]
+# df = pd.concat([df, df_cp], axis=0)
 
 
 plot_multiline_fitness(df)
 plot_avg_fitness(df)
 plot_best_fitness(df)
-plot_computation_time_for_parameterizations(df)
+# plot_computation_time_for_parameterizations(df)

@@ -1,6 +1,6 @@
 from Code.Preparation.encodeGenos import prepareEncoders
 
-def get_config(model_name, representation, long_genos, cells, twoLayer, bidir, data_path, load_dir, onlyEval=None, max_len=50, encoders=None):
+def get_config(model_name, representation, long_genos, cells, twoLayer, bidir, data_path, load_dir, onlyEval=None, max_len=50, encoders=None, locality='0', test='0', frams_path=''):
 
     config = {}
     config['model_name'] = model_name
@@ -14,8 +14,21 @@ def get_config(model_name, representation, long_genos, cells, twoLayer, bidir, d
     config['onlyEval'] = onlyEval
 
     config['max_len'] = max_len
+    loc_type = locality[-1]
+    if loc_type == 'l':
+        locality = locality[:-1]
+        config['locality_type'] = 'levens'
+    elif loc_type == 'n':
+        locality = locality[:-1]
+        config['locality_type'] = 'noloc'
+    else:
+        config['locality_type'] = 'dissim'
 
+    config['locality_term'] = True if locality != '0' else False
+    config['locality_power'] = float(str(locality).replace('-', '.'))
 
+    config['test'] = int(test)
+    config['frams_path'] = frams_path
 
     if representation == 'f4':
         representation_match_part = r'/\*4\*/'
@@ -41,12 +54,13 @@ def get_config(model_name, representation, long_genos, cells, twoLayer, bidir, d
     config['features'] = len(dict)
 
     config['lr'] = 0.0005
-    config['batch_size'] = 2048
+    config['batch_size'] = 50
     config['reg_base'] = 2e-6
 
     config['past_epochs'] = 0
     config['epochs'] = 2000
-    config['epochs_per_i'] = 10
+    config['epochs_per_i'] = 1
+    config['genos_per_epoch'] = 5001
 
     config['loaded_model_acc'] = 0
 

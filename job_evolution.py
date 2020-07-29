@@ -46,12 +46,18 @@ for i in range(3):
 
 options_representation = ['f1']#, 'f4', 'f9']
 
-latent = ['nolatent', 'model_64_oneLayer_Bidir_3_1']#, 'model_64_oneLayer_Bidir']
+latent_versions = []
+options_locality = ["0-1", "1", "10", "0-33", "3", "0-1l", "1l", "10l", "0-33l", "3l", "0-0n", "0-00n"]
+options_tests = list(range(3))
+for loc in options_locality:
+    for tes in options_tests:
+        latent_versions.append('model_64_oneLayer_Bidir_%s_%s' % (loc, tes))
+latent = ['nolatent'] + latent_versions# 'model_64_oneLayer_Bidir_1_1']#, 'model_64_oneLayer_Bidir']
 
-randoms = ['False', 'True']
+randoms = ['False']#, 'True']
 generations = ['400']
 populations = ['50']
-test_no = list(range(1))
+test_no = list(range(2))
 
 
 i = 0

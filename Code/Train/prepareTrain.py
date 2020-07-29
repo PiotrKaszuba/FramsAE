@@ -6,8 +6,11 @@ import os, glob
 import numpy as np
 import pickle
 from Code.Preparation.createModel import createModel, load_weights
-from Code.Statistics.makeHistograms import plot, plot_acc_by_length
+# from Code.Statistics.makeHistograms import plot, plot_acc_by_length
 import random
+from Code.Preparation.locality_term_prep import train_with_locality
+import shutil
+# from textdistance import levenshtein
 def RepresentsInt(s):
     try:
         int(s)
@@ -16,10 +19,10 @@ def RepresentsInt(s):
         return False
 
 def prepareTrain(config):
-    os.environ['PYTHONHASHSEED'] = '0'
-    np.random.seed(42)
-    random.seed(12345)
-    tf.random.set_seed(1)
+    # os.environ['PYTHONHASHSEED'] = '0'
+    # np.random.seed(42)
+    # random.seed(12345)
+    # tf.random.set_seed(1)
     reverse = config['reverse']
     # load genos
     genos = testGenos(config, print_some_genos=True)
@@ -98,7 +101,7 @@ def prepareTrain(config):
     # zerosTestCheck = np.flip(zerosTest, 1)
     zerosTestCheck = zerosTest
 
-    model, encoder, decoder = createModel(max_len, config['features'], config['dimsEmbed'], config['lr'], config['twoLayer'], config['bidir'], config['cells'], config['reg_base'])
+    model, encoder, decoder = createModel(max_len, config['features'], config['dimsEmbed'], config['lr'], config['twoLayer'], config['bidir'], config['cells'], config['reg_base'], config['locality_term'], batch_size=config['batch_size'], locality_power=config['locality_power'])
     #model_path_base = os.path.join(config['data_path'], config['model_name'] + str(config['past_epochs'])) + "_" + str(config['loaded_model_acc'])
 
     model_path_name = os.path.join(config['data_path'], config['model_name'])
@@ -124,8 +127,9 @@ def prepareTrain(config):
         eps_tot = losses_file['epochs_total']
         expected_epochs = eps_tot[-1]
         print("Loaded losses at epochs: " + str(expected_epochs))
-        if config['onlyEval'] == 'True':
-            plot(hist, accs, eps_tot, config['model_name'], config['load_dir'])
+        # if config['onlyEval'] == 'True':
+        #     plot(hist, accs, eps_tot, config['model_name'], config['load_dir'])
+        #     return
     else:
         hist = []
         accs = []
@@ -179,22 +183,31 @@ def prepareTrain(config):
 
 
     if config['onlyEval'] == 'True':
-        evaluate(model, [X_test, zerosTest], gen2Check, zerosTestCheck, encoders, reverse, prepare_hist=True,
+        evaluate(model, [X_test, zerosTest, tf.zeros((len(X_test),config['batch_size'], config['batch_size']))], gen2Check, zerosTestCheck, encoders, reverse, prepare_hist=True,
                  config=config)
         return
-    evaluate(model, [X_test, zerosTest], gen2Check, zerosTestCheck, encoders, reverse)
+    _, accStart=evaluate(model, [X_test, zerosTest, np.zeros((len(X_test),config['batch_size'], config['batch_size']))], gen2Check, zerosTestCheck, encoders, reverse, config=config)
+    if accStart == 0.0:
+        return
 
-
-    # savedAcc = 0.26 # REMOVE
+    # savedAcc = 0.26 # REMOVEqq
     for i in range(config['epochs']):
-        history = model.fit([X_train, zerosTrain], y_train,
-                            epochs=config['epochs_per_i'],
-                            verbose=2,
-                            validation_data=([X_test, zerosTest], y_test),
-                            shuffle=True, batch_size=config['batch_size'])
 
-        _, acc = evaluate(model, [X_test, zerosTest], gen2Check, zerosTestCheck, encoders, reverse)
+        if config['locality_term']:
+            history = train_with_locality(model, [X_train, zerosTrain, genos, y_train], config, [X_test, zerosTest, genosTest, y_test])
+        else:
 
+            history = model.fit([X_train, zerosTrain, tf.constant(genos)], y_train,
+                                epochs=config['epochs_per_i'],
+                                verbose=1,
+                                validation_data=([X_test, zerosTest, tf.zeros((len(X_test),config['batch_size'], config['batch_size']))], y_test),
+                                shuffle=True, batch_size=config['batch_size'])
+            history = history.history
+
+        _, acc = evaluate(model, [X_test, zerosTest, tf.zeros((len(X_test),config['batch_size'], config['batch_size']))], gen2Check, zerosTestCheck, encoders, reverse, config=config)
+        if acc == 0.0:
+            prepareTrain(config)
+            return
         epochs_total = (i + 1) * config['epochs_per_i'] + config['past_epochs']
         print("Total epochs done: " + str(epochs_total))
 
@@ -212,7 +225,7 @@ def prepareTrain(config):
         #     savedAcc = acc
 
         accs.append(acc)
-        hist.append(history.history)
+        hist.append(history)
         eps_tot.append(epochs_total)
         d = {'accuracy': accs, 'history': hist, 'epochs_total':eps_tot}
 
@@ -229,7 +242,10 @@ def prepareTrain(config):
         savedFiles.append(weights)
         if len(savedFiles)> 3:
             for filename in glob.glob(savedFiles[0]+"*"):
-                os.remove(filename)
+                try:
+                    os.remove(filename)
+                except IsADirectoryError:
+                    shutil.rmtree(filename)
             del savedFiles[0]
 
 
@@ -239,7 +255,7 @@ def prepareTrain(config):
 
 
 def evaluate(model, testData, gen2Check, zerosTestCheck, encoders, reverse=False, prepare_hist=False, config=None):
-    res = model.predict(testData, batch_size=2048)
+    res = model.predict(testData, batch_size=config['batch_size'])
     genosCheck = []
 
     # get sequences with ones in maxes
@@ -267,9 +283,9 @@ def evaluate(model, testData, gen2Check, zerosTestCheck, encoders, reverse=False
     sumOfHits = hits.sum()
 
     acc = sumOfHits / sumOfTokens
-
-    if prepare_hist and config is not None:
-        plot_acc_by_length(acc, hits, zerosTestCheck, model_name=config['model_name'], path=config['load_dir'])
+    #
+    # if prepare_hist and config is not None:
+    #     plot_acc_by_length(acc, hits, zerosTestCheck, model_name=config['model_name'], path=config['load_dir'])
 
 
     print("Token accuracy: " + str(acc))
