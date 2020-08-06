@@ -102,6 +102,7 @@ def plot_multiline_fitness(df):
     # tmp_df = df[df['param']==1]
     #for i, c in zip(df.param.unique(), ['Reds_r', 'Blues_r', 'Greens_r', 'Reds_r']):
     for i in df.param.unique():
+
         tmp_df = df[df['param']==i]
 
         palette = dict(zip(tmp_df.run.unique(),
@@ -124,7 +125,7 @@ def get_latent_df_scores():
     # col_names = ['num_cr', 'num_gen', 'worst', 'avg', 'best']
     df = pd.DataFrame()
     cnt = Counter()
-    for fname in glob.glob('evol_exp_lat/**/logbook_*', recursive=True):
+    for fname in glob.glob('logbooks/**/logbook_*', recursive=True):
         dir, f = os.path.split(fname)
         dir, name = os.path.split(dir)
         num += 1
@@ -133,12 +134,38 @@ def get_latent_df_scores():
             logbook = pickle.load(ff)
         try:
             df_temp = pd.DataFrame(logbook).rename(columns={'max': 'best', 'min':'worst', 'nevals':'num_cr'})
+            # filtering
+
             df_temp['num_cr'] = df_temp['gen'] * 50
             nam_base = '_'.join(name.split("_")[:-1])
+
+
+
+            nam_split = nam_base.split("_")
+            # if 'nolatent' in nam_base:
+            #     x=0
+            if nam_split[-1] == "Bidir":
+                df_temp['param'] = 'lat'
+                df_temp = df_temp[df_temp['gen'] == df_temp['gen'].max()]
+            elif nam_split[-1] == "nolatent":
+                df_temp['param'] = 'f1'
+                df_temp = df_temp[df_temp['gen'] == df_temp['gen'].max()]
+            elif nam_split[3] == "True":
+                df_temp['param'] = 'f1_rand'
+                df_temp = df_temp[df_temp['best'] == df_temp['best'].max()]
+            elif nam_split[6] == "True":
+                df_temp['param'] = 'lat_rand'
+                df_temp = df_temp[df_temp['best'] == df_temp['best'].max()]
+            else:
+                nam_base=nam_base.replace("-", ".")
+                nam_base=nam_base.replace("l", "L")
+                nam_base=nam_base.replace("00", "0")
+                df_temp = df_temp[df_temp['gen'] == df_temp['gen'].max()]
+                df_temp['param'] = nam_base.split("_")[6]
             # nam_base = 'f1' if 'nolatent' in name else 'latent'
             # nam_base += '_random' if 'True' in name else ''
             cnt[nam_base] += 1
-            df_temp['param'] = nam_base
+
             df_temp['run'] = 0
             df = pd.concat([df, df_temp], axis=0)
         except:
@@ -171,7 +198,7 @@ df = fix_dtypes(df)
 # df = pd.concat([df, df_cp], axis=0)
 
 
-plot_multiline_fitness(df)
+# plot_multiline_fitness(df)
 plot_avg_fitness(df)
 plot_best_fitness(df)
 # plot_computation_time_for_parameterizations(df)

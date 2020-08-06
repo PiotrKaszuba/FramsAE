@@ -9,7 +9,7 @@ import tensorflow as tf
 pad_sequences = tf.keras.preprocessing.sequence.pad_sequences
 
 from Code.Preparation.ParseGenFile import testGenos
-from Code.Preparation.Utils import get_genSuff, RepresentsInt
+from Code.Preparation.Utils import get_genSuff, RepresentsInt, extract_fram
 from Code.Preparation.createModel import createModel, load_weights
 from Code.Preparation.encodeGenos import encodeGenos, inverse
 
@@ -46,7 +46,7 @@ class EvolutionModel:
         self.cov = None
         self.latent = None
         self.data = None
-
+        self.clear_files = config['clear_files']
         self.prepareLatentProperties()
 
         self.simplest = None
@@ -103,6 +103,14 @@ class EvolutionModel:
         return np.ones((samples, self.config['max_len'], self.config['cells']))
 
 
+    def decode_latents(self, latents : np.ndarray) -> List[str]:
+        hidden, cell = splitLatentToHiddenAndCell(latents)
+        pred = self.decoder.predict(
+            [hidden, cell, self.getOnesMaskForFullPrediction(len(latents))])
+        genos = self.get_genos(pred)
+        frams = [extract_fram(geno) for geno in genos]
+        return frams
+
     def sampleMultivariateGaussianLatent(self, samples):
         sampled = np.random.multivariate_normal(self.means, self.cov, size=samples)
         print(np.max(sampled, axis=0))
@@ -118,15 +126,21 @@ class EvolutionModel:
         means_path = self.model_path_name+"_means"
         latent_path =  self.model_path_name+"_latent"
         if os.path.exists(cov_path):
+            if self.clear_files:
+                os.remove(cov_path)
             with open(cov_path, 'rb') as handle:
                 self.cov = pickle.load(handle)
                 print("Loaded cov")
         if os.path.exists(means_path):
+            if self.clear_files:
+                os.remove(means_path)
             with open(means_path, 'rb') as handle:
                 self.means = pickle.load(handle)
                 print("Loaded means")
 
         if os.path.exists(latent_path):
+            if self.clear_files:
+                os.remove(latent_path)
             with open(latent_path, 'rb') as handle:
                 self.latent = pickle.load(handle)
                 print("Loaded latent")

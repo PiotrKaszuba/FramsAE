@@ -7,7 +7,8 @@ def mkdir_p(dir):
     '''make a directory (dir) if it doesn't exist'''
     if not os.path.exists(dir):
         os.mkdir(dir)
-
+clear_files = 'False'
+collect_data_plot = 'False'
 locality = 'locality' # '' noloc otherwise
 onlyEval = 'None'
 try:
@@ -31,7 +32,7 @@ mkdir_p(job_directory)
 mkdir_p(data_dir)
 
 
-all_labs = ['43'] * 11  + ['45'] * 13 + ['ci'] * 13 + ['44']*8
+all_labs = ['43'] * 11  + ['45'] * 11 + ['ci'] * 13 + ['44']*10
 nodes = []
 
 for i in range(4): #up to 6
@@ -57,7 +58,7 @@ if locality == "locality":
     options_cells = ['64']
     options_twoLayer = ['oneLayer']
     options_bidir = ['Bidir']
-    options_locality = ["0-1", "1", "10", "0-33", "3", "0-1l", "1l", "10l", "0-33l", "3l", "0-0n", "0-00n"]
+    options_locality = ["0-1", "1", "10", "0-33", "3", "0-1l", "1l", "10l", "0-33l", "3l", "0-0n", "0-00n", "0", "0n"]
     options_tests = list(range(3))
 else:
     options_representation = ['f1', 'f4', 'f9']
@@ -129,9 +130,9 @@ for param in params:
         fh.writelines("#SBATCH --mail-type=ALL\n")
         fh.writelines("#SBATCH --mail-user=piotr.kaszuba@student.put.poznan.pl\n")
         #fh.writelines("echo hello")
-        fh.writelines("python3 $HOME/workspace/runFile.py %s %s %s %s %s %s %s %s %s %s %s %s\n" % (model_name, representation, long_genos, cells, twoLayer, bidir, param_data, read_directory, onlyEval, loc, tes, frams_path))
+        fh.writelines("python3 $HOME/workspace/runFile.py %s %s %s %s %s %s %s %s %s %s %s %s %s %s\n" % (model_name, representation, long_genos, cells, twoLayer, bidir, param_data, read_directory, onlyEval, loc, tes, frams_path, clear_files, collect_data_plot))
 
     os.system("chmod 777 %s" % job_file)
     os.system("sbatch %s" % job_file)
-    sleep(2)
+    sleep(0.2)
 print("ok")

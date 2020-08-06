@@ -1,17 +1,16 @@
-import argparse
-import json
-import os
-import sys
+from subprocess import Popen, PIPE, check_output
 from enum import Enum
-from itertools import count  # for tracking multiple instances
-from subprocess import Popen, PIPE
 from typing import List  # to be able to specify a type hint of list(something)
-
+from itertools import count  # for tracking multiple instances
+import json
+import sys, os
+import argparse
 import numpy as np
 
 ###########3 THIS BLOCK
 import functools
 import weakref
+from collections import Counter
 
 def memoized_method(*lru_args, **lru_kwargs): # THIS FOR isValid and evaluate
     def decorator(func):
@@ -36,7 +35,6 @@ def mkdir_p(dir):
         os.mkdir(dir)
 #####################################
 
-
 class FramsticksCLI:
     """Runs Framsticks CLI (command-line) executable and communicates with it using standard input and output.
     You can perform basic operations like mutation, crossover, and evaluation of genotypes.
@@ -56,8 +54,8 @@ class FramsticksCLI:
 
     FILE_PREFIX = 'framspy_'
 
-    RANDOMIZE_CMD = "rnd" + "\n"
-    SETEXPEDEF_CMD = "expdef standard-eval" + "\n"
+    RANDOMIZE_CMD = "Math.randomize();"
+    SETEXPEDEF_CMD = "Simulator.expdef=\"standard-eval\";"
     GETSIMPLEST_CMD = "getsimplest"
     GETSIMPLEST_FILE = "simplest.gen"
     EVALUATE_CMD = "evaluate eval-allcriteria.sim"
@@ -65,28 +63,30 @@ class FramsticksCLI:
     CROSSOVER_CMD = "crossover"
     CROSSOVER_FILE = "child.gen"
     DISSIMIL_CMD = "dissimil"
-    DISSIMIL_FILE = "dissimilarity_matrix.gen"
-    ISVALID_CMD = "isvalid"
-    ISVALID_FILE = "validity.gen"
+    DISSIMIL_FILE = "dissimilarity_matrix.tsv"  # tab-separated values
+    ISVALID_CMD = "arevalid"
+    ISVALID_FILE = "validity.txt"
     MUTATE_CMD = "mutate"
     MUTATE_FILE = "mutant.gen"
 
     CLI_INPUT_FILE = "genotypes.gen"
 
-    _next_instance_id = count(
-        0)  # "static" counter incremented when a new instance is created. Used for unique filenames
+    _next_instance_id = count(0)  # "static" counter incremented when a new instance is created. Used to ensure unique filenames for each instance.
+
 
     def __init__(self, framspath, framsexe, pid="", importSim : str = None):
-        self.importSim = importSim # THIS + THE ARGUMENT
-
+        # THIS BLOCK + THE ARGUMENT
+        self.importSim = importSim
+        self.validCnt = Counter()
+        self.invalidCnt = Counter()
+        ##############
         self.pid = pid if pid is not None else ""
         self.id = next(FramsticksCLI._next_instance_id)
         self.frams_path = framspath
-        self.frams_exe = framsexe if framsexe is not None else 'frams-vs.exe' if os.name == "nt" else 'frams.linux'
+        self.frams_exe = framsexe if framsexe is not None else 'frams.exe' if os.name == "nt" else 'frams.linux'
         self.writing_path = None
         mainpath = os.path.join(self.frams_path, self.frams_exe)
-        exe_call = [mainpath, '-Q', '-s', '-c',
-                    '-icliutils.ini']  # -c will be ignored in Windows Framsticks (this option is meaningless because the Windows version does not support color console, so no need to deactivate this feature using -c)
+        exe_call = [mainpath, '-Q', '-s', '-c', '-icliutils.ini']  # -c will be ignored in Windows Framsticks (this option is meaningless because the Windows version does not support color console, so no need to deactivate this feature using -c)
         exe_call_to_get_version = [mainpath, '-V']
         exe_call_to_get_path = [mainpath, '-?']
         try:
@@ -96,20 +96,21 @@ class FramsticksCLI:
                 if 'dDIRECTORY' in helpline:
                     self.writing_path = helpline.split("'")[1]
         except FileNotFoundError:
-            print("Could not find Framsticks executable ('%s') in the given location ('%s')." % (
-            self.frams_exe, self.frams_path))
+            print("Could not find Framsticks executable ('%s') in the given location ('%s')." % (self.frams_exe, self.frams_path))
             sys.exit(1)
-        print(
-            "Temporary files with results will be saved in detected writable working directory '%s'" % self.writing_path)
+        print("Temporary files with results will be saved in detected writable working directory '%s'" % self.writing_path)
         self.__spawnFramsticksCLI(exe_call)
+
         ### THIS BLOCK
         if self.importSim is not None:
             self.rawCommand(self.importSim)
         ############
 
+
     def __readAllOutput(self, command):
         frams_process = Popen(command, stdout=PIPE, stderr=PIPE, stdin=PIPE)
         return [line.decode('utf-8').rstrip() for line in iter(frams_process.stdout.readlines())]
+
 
     def __spawnFramsticksCLI(self, args):
         # the child app (Framsticks CLI) should not buffer outputs and we need to immediately read its stdout, hence we use pexpect/wexpect
@@ -121,32 +122,32 @@ class FramsticksCLI:
         else:
             import pexpect  # https://pexpect.readthedocs.io/en/stable/
             self.child = pexpect.spawn(' '.join(args))
-            self.child.setecho(False)  # linux only
+        self.child.setecho(False)  # ask the communication to not copy to stdout what we write to stdin
         print('OK.')
 
         self.__readFromFramsCLIUntil("UserScripts.autoload")
-        print('Performing a basic test 1/3... ', end='')
+        print('Performing a basic test 1/2... ', end='')
         assert self.getSimplest("1") == "X"
         print('OK.')
-        print('Performing a basic test 2/3... ', end='')
-        assert self.isValid("X[0:0]") is True
-        print('OK.')
-        print('Performing a basic test 3/3... ', end='')
-        assert self.isValid("X[0:0],") is False
+        print('Performing a basic test 2/2... ', end='')
+        assert self.isValid(["X[0:0],", "X[0:0]", "X[1:0]"]) == [False, True, False]
         print('OK.')
         if not self.DETERMINISTIC:
-            self.child.sendline(self.RANDOMIZE_CMD)
-        self.child.sendline(self.SETEXPEDEF_CMD)
+            self.sendDirectCommand(self.RANDOMIZE_CMD)
+        self.sendDirectCommand(self.SETEXPEDEF_CMD)
+
 
     def closeFramsticksCLI(self):
         # End gracefully by sending end-of-file character: ^Z or ^D
-        # Without -Q argument ("quiet mode"), Framsticks CLI would print "Shell closed." for goodbye.
-        # self.child.sendline(chr(26 if os.name == "nt" else 4))
-        self.child.terminate(force=True)
+        # Without the -Q argument ("quiet mode"), Framsticks CLI would print "Shell closed." for goodbye.
+        self.child.sendline(chr(26 if os.name == "nt" else 4))
+
 
     def __getPrefixedFilename(self, filename: str) -> str:
         # Returns filename with unique instance id appended so there is no clash when many instances of this class use the same Framsticks CLI executable
         return FramsticksCLI.FILE_PREFIX + self.pid + str(self.id) + '_' + filename # THIS
+
+
 
     def __saveGenotypeToFile(self, genotype, name, mode, saveformat):
         relname = self.__getPrefixedFilename(name)
@@ -165,14 +166,20 @@ class FramsticksCLI:
             outfile.close()
         return relname, absname
 
-    def __readFromFramsCLIUntil(self, until_marker: str):
+
+    def __readFromFramsCLIUntil(self, until_marker: str) -> str:
+        output = ""
         while True:
-            self.child.expect('\n')
+            self.child.expect('\r\n' if os.name == "nt" else '\n')
             msg = str(self.child.before)
-            if self.PRINT_FRAMSTICKS_OUTPUT or msg.startswith("[ERROR]"):
+            if self.PRINT_FRAMSTICKS_OUTPUT or msg.startswith("[ERROR]") or msg.startswith("[CRITICAL]"):
                 print(msg)
             if until_marker in msg:
                 break
+            else:
+                output += msg + '\n'
+        return output
+
 
     def __runCommand(self, command, genotypes, result_file_name, saveformat) -> List[str]:
         filenames_rel = []  # list of file names with input data for the command
@@ -180,36 +187,50 @@ class FramsticksCLI:
         if saveformat == self.GENO_SAVE_FILE_FORMAT["RAWGENO"]:
             for i in range(len(genotypes)):
                 # plain text format = must have a separate file for each genotype
-                rel, abs = self.__saveGenotypeToFile(genotypes[i], "genotype" + str(i) + ".gen", "w",
-                                                     self.GENO_SAVE_FILE_FORMAT["RAWGENO"])
+                rel, abs = self.__saveGenotypeToFile(genotypes[i], "genotype" + str(i) + ".gen", "w", self.GENO_SAVE_FILE_FORMAT["RAWGENO"])
                 filenames_rel.append(rel)
                 filenames_abs.append(abs)
         elif saveformat == self.GENO_SAVE_FILE_FORMAT["NATIVEFRAMS"]:
-            self.__saveGenotypeToFile(None, self.CLI_INPUT_FILE, 'd',
-                                      None)  # 'd'elete: ensure there is nothing left from the last run of the program because we "a"ppend to file in the loop below
+            self.__saveGenotypeToFile(None, self.CLI_INPUT_FILE, 'd', None)  # 'd'elete: ensure there is nothing left from the last run of the program because we "a"ppend to file in the loop below
             for i in range(len(genotypes)):
-                rel, abs = self.__saveGenotypeToFile(genotypes[i], self.CLI_INPUT_FILE, "a",
-                                                     self.GENO_SAVE_FILE_FORMAT["NATIVEFRAMS"])
+                rel, abs = self.__saveGenotypeToFile(genotypes[i], self.CLI_INPUT_FILE, "a", self.GENO_SAVE_FILE_FORMAT["NATIVEFRAMS"])
             #  since we use the same file in the loop above, add this file only once (i.e., outside of the loop)
             filenames_rel.append(rel)
             filenames_abs.append(abs)
 
         result_file_name = self.__getPrefixedFilename(result_file_name)
         cmd = command + " " + " ".join(filenames_rel) + " " + result_file_name
-        self.child.sendline(cmd + '\n')
+        self.child.sendline(cmd)
         self.__readFromFramsCLIUntil(self.STDOUT_ENDOPER_MARKER)
         filenames_abs.append(os.path.join(self.writing_path, self.OUTPUT_DIR, result_file_name))
         return filenames_abs  # last element is a path to the file containing results
+
 
     def __cleanUpCommandResults(self, filenames):
         """Deletes files with results just created by the command."""
         for name in filenames:
             os.remove(name)
 
+
+    sendDirectCommand_counter = count(0)  # an internal counter for the sendDirectCommand() method; should be static within that method but python does not allow
+
+
+    def sendDirectCommand(self, command: str) -> str:
+        """Sends any command to Framsticks CLI. Use when you know Framsticks and its scripting language, Framscript.
+
+        Returns:
+            The output of the command, likely with extra \\n because for each entered command, Framsticks CLI responds with a (muted in Quiet mode) prompt and a \\n.
+        """
+        self.child.sendline(command.strip())
+        next(FramsticksCLI.sendDirectCommand_counter)
+        STDOUT_ENDOPER_MARKER = "uniqe-marker-" + str(FramsticksCLI.sendDirectCommand_counter)
+        self.child.sendline("Simulator.print(\"%s\");" % STDOUT_ENDOPER_MARKER)
+        return self.__readFromFramsCLIUntil(STDOUT_ENDOPER_MARKER)
+
+
     def getSimplest(self, genetic_format) -> str:
         assert len(genetic_format) == 1, "Genetic format should be a single character"
-        files = self.__runCommand(self.GETSIMPLEST_CMD + " " + genetic_format + " ", [], self.GETSIMPLEST_FILE,
-                                  self.GENO_SAVE_FILE_FORMAT["RAWGENO"])
+        files = self.__runCommand(self.GETSIMPLEST_CMD + " " + genetic_format + " ", [], self.GETSIMPLEST_FILE, self.GENO_SAVE_FILE_FORMAT["RAWGENO"])
         with open(files[-1]) as f:
             genotype = "".join(f.readlines())
         self.__cleanUpCommandResults(files)
@@ -222,33 +243,41 @@ class FramsticksCLI:
             Dictionary -- genotype evaluated with self.EVALUATE_COMMAND. Note that for whatever reason (e.g. incorrect genotype),
             the dictionary you will get may be empty or partially empty and may not have the fields you expected, so handle such cases properly.
         """
-        files = self.__runCommand(self.EVALUATE_CMD, [genotype], self.EVALUATE_FILE,
-                                  self.GENO_SAVE_FILE_FORMAT["NATIVEFRAMS"])
+        files = self.__runCommand(self.EVALUATE_CMD, [genotype], self.EVALUATE_FILE, self.GENO_SAVE_FILE_FORMAT["NATIVEFRAMS"])
 
         ### THIS BLOCK
         if self.importSim is not None:
             self.rawCommand(self.importSim)
         ############
+
         with open(files[-1]) as f:
             data = json.load(f)
         if len(data) > 0:
             self.__cleanUpCommandResults(files)
             return data
         else:
-            print("Evaluating genotype: no performance data was returned in",
-                  self.EVALUATE_FILE)  # we do not delete files here
+            print("Evaluating genotype: no performance data was returned in", self.EVALUATE_FILE)  # we do not delete files here
             return None
 
+
     def mutate(self, genotype: str) -> str:
+        """
+        Returns:
+            The genotype of the mutated individual. Empty string if the mutation failed.
+        """
         files = self.__runCommand(self.MUTATE_CMD, [genotype], self.MUTATE_FILE, self.GENO_SAVE_FILE_FORMAT["RAWGENO"])
         with open(files[-1]) as f:
             newgenotype = "".join(f.readlines())
         self.__cleanUpCommandResults(files)
         return newgenotype
 
-    def crossOver(self, genotype1: str, genotype2: str) -> str:
-        files = self.__runCommand(self.CROSSOVER_CMD, [genotype1, genotype2], self.CROSSOVER_FILE,
-                                  self.GENO_SAVE_FILE_FORMAT["RAWGENO"])
+
+    def crossOver(self, genotype_parent1: str, genotype_parent2: str) -> str:
+        """
+        Returns:
+            The genotype of the offspring. Empty string if the crossing over failed.
+        """
+        files = self.__runCommand(self.CROSSOVER_CMD, [genotype_parent1, genotype_parent2], self.CROSSOVER_FILE, self.GENO_SAVE_FILE_FORMAT["RAWGENO"])
         with open(files[-1]) as f:
             child_genotype = "".join(f.readlines())
         self.__cleanUpCommandResults(files)
@@ -265,8 +294,8 @@ class FramsticksCLI:
         Returns:
             A square array with dissimilarities of each pair of genotypes.
         """
-        files = self.__runCommand(self.DISSIMIL_CMD, genotype_list, self.DISSIMIL_FILE,
-                                  self.GENO_SAVE_FILE_FORMAT["NATIVEFRAMS"])
+        assert isinstance(genotype_list, list)  # because in python str has similar capabilities as list and here it would pretend to work too, so to avoid any ambiguity
+        files = self.__runCommand(self.DISSIMIL_CMD, genotype_list, self.DISSIMIL_FILE, self.GENO_SAVE_FILE_FORMAT["NATIVEFRAMS"])
         with open(files[-1]) as f:
             dissimilarity_matrix = np.genfromtxt(f, dtype=np.float64, comments='#', encoding=None, delimiter='\t')
         # We would like to skip column #1 while reading and read everything else, but... https://stackoverflow.com/questions/36091686/exclude-columns-from-genfromtxt-with-numpy
@@ -277,32 +306,43 @@ class FramsticksCLI:
         assert square_matrix.shape == EXPECTED_SHAPE, f"Not a correct dissimilarity matrix, expected {EXPECTED_SHAPE} "
         for i in range(len(square_matrix)):
             assert square_matrix[i][i] == 0, "Not a correct dissimilarity matrix, diagonal expected to be 0"
-        # assert (
-        #             square_matrix == square_matrix.T).all(), "Probably not a correct dissimilarity matrix, expecting symmetry, verify this"
+        assert (square_matrix == square_matrix.T).all(), "Probably not a correct dissimilarity matrix, expecting symmetry, verify this"  # could introduce tolerance in comparison (e.g. class field DISSIMIL_DIFF_TOLERANCE=10^-5) so that miniscule differences do not fail here
         self.__cleanUpCommandResults(files)
         return square_matrix
 
     @memoized_method(maxsize=5000)
-    def isValid(self, genotype: str) -> bool:
-        files = self.__runCommand(self.ISVALID_CMD, [genotype], self.ISVALID_FILE,
-                                  self.GENO_SAVE_FILE_FORMAT["RAWGENO"])
+    def isValid(self, genotype_list: List[str], validCategory:str = None) -> List[bool]:
+        ## THIS BLOCK + del assert
+        #assert isinstance(genotype_list, list)  # because in python str has similar capabilities as list and here it would pretend to work too, so to avoid any ambiguity
+        retOne = False
+        if not isinstance(genotype_list, list):
+            genotype_list = [genotype_list]
+            retOne = True
+
+        #######
+        files = self.__runCommand(self.ISVALID_CMD, genotype_list, self.ISVALID_FILE, self.GENO_SAVE_FILE_FORMAT["NATIVEFRAMS"])
+        valid = []
         with open(files[-1]) as f:
-            valid = f.readline() == "1"
+            for line in f:
+                valid.append(line.strip() == "1")
         self.__cleanUpCommandResults(files)
+        assert len(genotype_list) == len(valid), "Submitted %d genotypes, received %d validity values" % (len(genotype_list), len(valid))
+        ## THIS BLOCK
+        if validCategory is not None:
+            self.validCnt[validCategory] += sum(valid)
+            self.invalidCnt[validCategory] += sum(not v for v in valid)
+        if retOne:
+            return valid[0]
+        #########33
         return valid
 
 
 def parseArguments():
-    parser = argparse.ArgumentParser(
-        description='Run this program with "python -u %s" if you want to disable buffering of its output.' % sys.argv[
-            0])
+    parser = argparse.ArgumentParser(description='Run this program with "python -u %s" if you want to disable buffering of its output.' % sys.argv[0])
     parser.add_argument('-path', type=ensureDir, required=True, help='Path to Framsticks CLI without trailing slash.')
-    parser.add_argument('-exe', required=False,
-                        help='Executable name. If not given, "frams.exe" or "frams.linux" is assumed.')
-    parser.add_argument('-genformat', required=False,
-                        help='Genetic format for the demo run, for example 4, 9, or S. If not given, f1 is assumed.')
-    parser.add_argument('-pid', required=False,
-                        help='Unique ID of this process. Only relevant when you run multiple instances of this class simultaneously but as separate processes, and they use the same Framsticks CLI executable. This value will be appended to the names of created files to avoid conflicts.')
+    parser.add_argument('-exe', required=False, help='Executable name. If not given, "frams.exe" or "frams.linux" is assumed.')
+    parser.add_argument('-genformat', required=False, help='Genetic format for the demo run, for example 4, 9, or S. If not given, f1 is assumed.')
+    parser.add_argument('-pid', required=False, help='Unique ID of this process. Only relevant when you run multiple instances of this class simultaneously but as separate processes, and they use the same Framsticks CLI executable. This value will be appended to the names of created files to avoid conflicts.')
     return parser.parse_args()
 
 
@@ -327,6 +367,8 @@ if __name__ == "__main__":
 
     framsCLI = FramsticksCLI('C:/Users/Piotr/Desktop/Framsticks50rc14', None, 'pid1233')
 
+    print("Sending a direct command to Framsticks CLI that calculates \"4\"+2 yields", repr(framsCLI.sendDirectCommand("Simulator.print(\"4\"+2);")))
+
     simplest = framsCLI.getSimplest('1')
     print("\tSimplest genotype:", simplest)
     parent1 = framsCLI.mutate(simplest)
@@ -338,8 +380,8 @@ if __name__ == "__main__":
     print("\tParent2 (Parent1 mutated %d times):" % MUTATE_COUNT, parent2)
     offspring = framsCLI.crossOver(parent1, parent2)
     print("\tCrossover (Offspring):", offspring)
-    print('\tDissimilarity of Parent1 and Offspring:', framsCLI.dissimilarity([parent1, offspring, parent2, offspring]))
+    print('\tDissimilarity of Parent1 and Offspring:', framsCLI.dissimilarity([parent1, offspring])[0, 1])
     print('\tPerformance of Offspring:', framsCLI.evaluate(offspring))
-    print('\tValidity of Offspring:', framsCLI.isValid(offspring))
+    print('\tValidity of Parent1, Parent 2, and Offspring:', framsCLI.isValid([parent1, parent2, offspring]))
 
     framsCLI.closeFramsticksCLI()

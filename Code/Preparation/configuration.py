@@ -1,6 +1,6 @@
 from Code.Preparation.encodeGenos import prepareEncoders
 
-def get_config(model_name, representation, long_genos, cells, twoLayer, bidir, data_path, load_dir, onlyEval=None, max_len=50, encoders=None, locality='0', test='0', frams_path=''):
+def get_config(model_name, representation, long_genos, cells, twoLayer, bidir, data_path, load_dir, onlyEval=None, max_len=50, encoders=None, locality='0', test='0', frams_path='', clear_files = False):
 
     config = {}
     config['model_name'] = model_name
@@ -53,13 +53,19 @@ def get_config(model_name, representation, long_genos, cells, twoLayer, bidir, d
 
     config['features'] = len(dict)
 
-    config['lr'] = 0.0005
+    config['lr'] = 0.00015
     config['batch_size'] = 50
+    if not config['locality_term']:
+        config['batch_size'] = 1024
+        config['lr'] = 0.0015
+
     config['reg_base'] = 2e-6
 
     config['past_epochs'] = 0
-    config['epochs'] = 2000
+    config['epochs'] = 10000
     config['epochs_per_i'] = 1
+    if not config['locality_term']:
+        config['epochs_per_i'] = 20
     config['genos_per_epoch'] = 5001
 
     config['loaded_model_acc'] = 0
@@ -71,6 +77,6 @@ def get_config(model_name, representation, long_genos, cells, twoLayer, bidir, d
         encoders = prepareEncoders(config['dict'])
 
     config['encoders'] = encoders
-
+    config['clear_files'] = True if clear_files == 'True' else False
 
     return config

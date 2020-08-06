@@ -2,8 +2,7 @@ import tensorflow as tf
 import random
 from Code.FramsticksCli import FramsticksCLI
 import numpy as np
-from collections import defaultdict, Counter
-import pickle
+from collections import defaultdict
 from scipy.spatial.distance import pdist, squareform
 
 from textdistance import levenshtein
@@ -147,7 +146,8 @@ def gradient(model, x):
         t.watch(x_tensor)
         loss = model(x_tensor)
     return t.gradient(loss, x_tensor).numpy()
-import tensorflow.keras.backend as K
+
+
 def fit_epoch(model, data, config, valid_data, framsCLI):
 
     X_test, zerosTest, genosTest, y_test= valid_data

@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from Levenshtein import distance
 from textwrap import wrap
-from Code.FramsticksCLI import FramsticksCLI
+from Code.FramsticksCli import FramsticksCLI
 from collections import Counter
 
 from Code.Preparation.Run_preparation import prepareData, EvolutionModel, getConcatEncoderPredGenotypes, splitLatentToHiddenAndCell

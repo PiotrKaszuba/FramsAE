@@ -114,7 +114,10 @@ def createModel(max_len, features, dimsEmbed, lr, two_layer=False, bidir=False, 
                           name='denseOut')(prev_layer)
 
     decoder = Model(inputs=[decoderInpH, decoderInpC, decoderPrevInput], outputs=out)
-    model = Model(inputs=[inp, inp2, inp3], outputs=decoder([h, c, embed2]))
+    if locality_term:
+        model = Model(inputs=[inp, inp2, inp3], outputs=decoder([h, c, embed2]))
+    else:
+        model = Model(inputs=[inp, inp2], outputs=decoder([h, c, embed2]))
 
     model.summary()
     decoder.summary()
@@ -131,8 +134,10 @@ def createModel(max_len, features, dimsEmbed, lr, two_layer=False, bidir=False, 
     model.compile(optimizer=Adam(lr, clipnorm=1.0, clipvalue=0.5), loss='categorical_crossentropy')
     decoder.compile(optimizer=Adam(lr, clipnorm=1.0, clipvalue=0.5), loss='categorical_crossentropy')
     # model.metrics_tensors = []
-
-    encoder = Model(inputs=[inp, inp2, inp3], outputs=[h, c, embed2])
+    if locality_term:
+        encoder = Model(inputs=[inp, inp2, inp3], outputs=[h, c, embed2])
+    else:
+        encoder = Model(inputs=[inp, inp2], outputs=[h, c, embed2])
 
     return model, encoder, decoder
 

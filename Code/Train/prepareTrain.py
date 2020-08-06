@@ -183,10 +183,18 @@ def prepareTrain(config):
 
 
     if config['onlyEval'] == 'True':
-        evaluate(model, [X_test, zerosTest, tf.zeros((len(X_test),config['batch_size'], config['batch_size']))], gen2Check, zerosTestCheck, encoders, reverse, prepare_hist=True,
+        if config['locality_term']:
+            temp_inp = [X_test, zerosTest, tf.zeros((len(X_test),config['batch_size'], config['batch_size']))]
+        else:
+            temp_inp = [X_test, zerosTest]
+        evaluate(model,temp_inp , gen2Check, zerosTestCheck, encoders, reverse, prepare_hist=True,
                  config=config)
         return
-    _, accStart=evaluate(model, [X_test, zerosTest, np.zeros((len(X_test),config['batch_size'], config['batch_size']))], gen2Check, zerosTestCheck, encoders, reverse, config=config)
+    if config['locality_term']:
+        temp_inp = [X_test, zerosTest, np.zeros((len(X_test),config['batch_size'], config['batch_size']))]
+    else:
+        temp_inp = [X_test, zerosTest]
+    _, accStart=evaluate(model, temp_inp , gen2Check, zerosTestCheck, encoders, reverse, config=config)
     if accStart == 0.0:
         return
 
@@ -197,14 +205,14 @@ def prepareTrain(config):
             history = train_with_locality(model, [X_train, zerosTrain, genos, y_train], config, [X_test, zerosTest, genosTest, y_test])
         else:
 
-            history = model.fit([X_train, zerosTrain, tf.constant(genos)], y_train,
+            history = model.fit([X_train, zerosTrain], y_train,
                                 epochs=config['epochs_per_i'],
-                                verbose=1,
-                                validation_data=([X_test, zerosTest, tf.zeros((len(X_test),config['batch_size'], config['batch_size']))], y_test),
+                                verbose=2,
+                                validation_data=([X_test, zerosTest], y_test),
                                 shuffle=True, batch_size=config['batch_size'])
             history = history.history
 
-        _, acc = evaluate(model, [X_test, zerosTest, tf.zeros((len(X_test),config['batch_size'], config['batch_size']))], gen2Check, zerosTestCheck, encoders, reverse, config=config)
+        _, acc = evaluate(model, temp_inp, gen2Check, zerosTestCheck, encoders, reverse, config=config)
         if acc == 0.0:
             prepareTrain(config)
             return

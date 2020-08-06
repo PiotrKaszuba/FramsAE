@@ -6,7 +6,7 @@ from deap import creator, base, tools, algorithms
 from Code.FramsticksCli import FramsticksCLI
 import glob
 import pickle
-from Code.Preparation.Run_preparation_slurm import EvolutionModel, prepareGenos, extractIthGenotypeFromEncoderPred, splitLatentToHiddenAndCell
+from Code.Preparation.Run_preparation_slurm import EvolutionModel, splitLatentToHiddenAndCell
 from Code.Preparation.configuration import get_config
 from Code.Preparation.Utils import extract_fram
 from Code.Preparation.Run_preparation_slurm import prepareData
