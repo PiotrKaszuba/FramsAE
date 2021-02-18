@@ -1,6 +1,6 @@
 from subprocess import Popen, PIPE, check_output
 from enum import Enum
-from typing import List  # to be able to specify a type hint of list(something)
+from typing import List, Tuple  # to be able to specify a type hint of list(something)
 from itertools import count  # for tracking multiple instances
 import json
 import sys, os
@@ -8,9 +8,53 @@ import argparse
 import numpy as np
 
 ###########3 THIS BLOCK
+import re
+fake_fitness = [False]
+fake_mutate = [True]
+fitness_len_weight = [0.0]
+fitness_len_max_value = [0.0]
+fitness_max_len = [-1]
+fitness_len_chars_sub = [''] # no sub '', '[^X]' leaves only X, '[X]' removes only X
+fitness_min_value = [-1]
 import functools
 import weakref
 from collections import Counter
+def fake_fitness_f(geno):
+    fitness = 0.0
+    fitness += geno.count('U') * 1
+    fitness += geno.count('D') * (-1)
+    fitness += geno.count('F') * 0.33
+    fitness += geno.count('B') * (-0.33)
+    fitness += geno.count('R') * (-0.05)
+    fitness += geno.count('L') * (-0.05)
+    return fitness
+
+def fake_fitness_batch(genos):
+    return [fake_fitness_f(geno) for geno in genos]
+
+import random
+def fake_mutate_f9(genotype:str):
+
+    pref = genotype[:5]
+    genotype = genotype[5:]
+    min_val = -2
+    if len(genotype) == 1:
+        min_val = -1
+    a= random.randint(min_val, len(genotype)-1)
+    chars = 'UDFBLR'
+
+    if a == -2:
+        b = random.randint(0, len(genotype)-1)
+        new_geno = genotype[:b] + genotype[b+1:]
+    elif a == -1:
+        b = random.randint(0, len(genotype))
+        char = random.choice(chars)
+        new_geno = genotype[:b] + char + genotype[b:]
+    else:
+        char = random.choice(chars.replace(genotype[a], ''))
+        new_geno = genotype[:a] + char + genotype[a + 1:]
+    return pref + new_geno
+
 
 def memoized_method(*lru_args, **lru_kwargs): # THIS FOR isValid and evaluate
     def decorator(func):
@@ -50,6 +94,7 @@ class FramsticksCLI:
 
     GENO_SAVE_FILE_FORMAT = Enum('GENO_SAVE_FILE_FORMAT', 'NATIVEFRAMS RAWGENO')  # how to save genotypes
     OUTPUT_DIR = "scripts_output"
+    GENOTYPE_INVALID = "/*invalid*/"
     STDOUT_ENDOPER_MARKER = "FileObject.write"  # we look for this message on Framsticks CLI stdout to detect when Framsticks created a file with the result we expect
 
     FILE_PREFIX = 'framspy_'
@@ -61,22 +106,36 @@ class FramsticksCLI:
     EVALUATE_CMD = "evaluate eval-allcriteria.sim"
     EVALUATE_FILE = "genos_eval.json"
     CROSSOVER_CMD = "crossover"
-    CROSSOVER_FILE = "child.gen"
+    CROSSOVER_FILE = "crossover_child.gen"
     DISSIMIL_CMD = "dissimil"
     DISSIMIL_FILE = "dissimilarity_matrix.tsv"  # tab-separated values
-    ISVALID_CMD = "arevalid"
+    ISVALID_CMD = "isvalid_many"
     ISVALID_FILE = "validity.txt"
-    MUTATE_CMD = "mutate"
-    MUTATE_FILE = "mutant.gen"
+    MUTATE_CMD = "mutate_many"
+    MUTATE_FILE = "mutation_results.gen"
+    #THIS BLOCK
+    GENERATE_FRAMS = 'generateframs'
+    GENERATED_FILE = 'generatedframs.gen'
+    ####
 
     CLI_INPUT_FILE = "genotypes.gen"
 
     _next_instance_id = count(0)  # "static" counter incremented when a new instance is created. Used to ensure unique filenames for each instance.
 
+    # THIS BLOCK
+    def run_commands(self):
+        if self.importSim is not None:
+            for commnad, marker in zip(self.importSim, self.markers):
+                self.rawCommand(commnad, marker)
+    #
 
-    def __init__(self, framspath, framsexe, pid="", importSim : str = None):
+    def __init__(self, framspath, framsexe, pid="", importSim : List[str] = None, markers: List[str]=None, config=None):
         # THIS BLOCK + THE ARGUMENT
-        self.importSim = importSim
+        self.config = config
+        self.importSim = [importSim] if isinstance(importSim, str) else importSim
+        self.markers = [markers] if isinstance(markers, str) else markers
+        # if self.markers is None:
+        #     self.markers = ["Simulator.Load"]
         self.validCnt = Counter()
         self.invalidCnt = Counter()
         ##############
@@ -102,8 +161,7 @@ class FramsticksCLI:
         self.__spawnFramsticksCLI(exe_call)
 
         ### THIS BLOCK
-        if self.importSim is not None:
-            self.rawCommand(self.importSim)
+        self.run_commands()
         ############
 
 
@@ -122,7 +180,7 @@ class FramsticksCLI:
         else:
             import pexpect  # https://pexpect.readthedocs.io/en/stable/
             self.child = pexpect.spawn(' '.join(args))
-        self.child.setecho(False)  # ask the communication to not copy to stdout what we write to stdin
+        # self.child.setecho(False)  # ask the communication to not copy to stdout what we write to stdin
         print('OK.')
 
         self.__readFromFramsCLIUntil("UserScripts.autoload")
@@ -141,6 +199,18 @@ class FramsticksCLI:
         # End gracefully by sending end-of-file character: ^Z or ^D
         # Without the -Q argument ("quiet mode"), Framsticks CLI would print "Shell closed." for goodbye.
         self.child.sendline(chr(26 if os.name == "nt" else 4))
+
+    def ask_for_genos(self, genotype_list=None, number_of_genos=None, diversity=None, timeout=None):
+        assert genotype_list is not None and number_of_genos is not None and diversity is not None
+        files = self.__runCommand(self.GENERATE_FRAMS, genotype_list, self.GENERATED_FILE,
+                                  self.GENO_SAVE_FILE_FORMAT["NATIVEFRAMS"], additional_args=[str(number_of_genos), str(diversity)], timeout=timeout)
+        generated = []
+        with open(files[-1]) as f:
+            for line in f:
+                generated.append(line.strip())
+        self.__cleanUpCommandResults(files)
+        return generated
+        
 
 
     def __getPrefixedFilename(self, filename: str) -> str:
@@ -167,10 +237,14 @@ class FramsticksCLI:
         return relname, absname
 
 
-    def __readFromFramsCLIUntil(self, until_marker: str) -> str:
+    def __readFromFramsCLIUntil(self, until_marker: str, timeout=None) -> str:
         output = ""
         while True:
-            self.child.expect('\r\n' if os.name == "nt" else '\n')
+            if timeout is not None:
+
+                self.child.expect('\r\n' if os.name == "nt" else '\n', timeout=timeout)
+            else:
+                self.child.expect('\r\n' if os.name == "nt" else '\n')
             msg = str(self.child.before)
             if self.PRINT_FRAMSTICKS_OUTPUT or msg.startswith("[ERROR]") or msg.startswith("[CRITICAL]"):
                 print(msg)
@@ -181,7 +255,7 @@ class FramsticksCLI:
         return output
 
 
-    def __runCommand(self, command, genotypes, result_file_name, saveformat) -> List[str]:
+    def __runCommand(self, command, genotypes, result_file_name, saveformat, additional_args=None, timeout=None) -> List[str]:
         filenames_rel = []  # list of file names with input data for the command
         filenames_abs = []  # same list but absolute paths actually used
         if saveformat == self.GENO_SAVE_FILE_FORMAT["RAWGENO"]:
@@ -200,8 +274,10 @@ class FramsticksCLI:
 
         result_file_name = self.__getPrefixedFilename(result_file_name)
         cmd = command + " " + " ".join(filenames_rel) + " " + result_file_name
+        if additional_args is not None:
+            cmd = cmd + " " + " ".join(additional_args)
         self.child.sendline(cmd)
-        self.__readFromFramsCLIUntil(self.STDOUT_ENDOPER_MARKER)
+        self.__readFromFramsCLIUntil(self.STDOUT_ENDOPER_MARKER, timeout=timeout)
         filenames_abs.append(os.path.join(self.writing_path, self.OUTPUT_DIR, result_file_name))
         return filenames_abs  # last element is a path to the file containing results
 
@@ -236,28 +312,68 @@ class FramsticksCLI:
         self.__cleanUpCommandResults(files)
         return genotype
 
-    @memoized_method(maxsize=5000)
-    def evaluate(self, genotype: str):
+    @memoized_method(maxsize=1000)
+    def evaluate(self, genotype_list: Tuple[str]):
+
         """
         Returns:
             Dictionary -- genotype evaluated with self.EVALUATE_COMMAND. Note that for whatever reason (e.g. incorrect genotype),
             the dictionary you will get may be empty or partially empty and may not have the fields you expected, so handle such cases properly.
         """
-        files = self.__runCommand(self.EVALUATE_CMD, [genotype], self.EVALUATE_FILE, self.GENO_SAVE_FILE_FORMAT["NATIVEFRAMS"])
+        ## THIS BLOCK + del assert
+        #assert isinstance(genotype_list,list)  # because in python str has similar capabilities as list and here it would pretend to work too, so to avoid any ambiguity
 
+        if isinstance(genotype_list, tuple):
+            genotype_list = list(genotype_list)
+
+        retOne = False
+        if not isinstance(genotype_list, list):
+            genotype_list = [genotype_list]
+            retOne = True
+
+
+        if fake_fitness[0]:
+            data = fake_fitness_batch(genotype_list)
+            if retOne:
+                return data[0]
+            #######
+            return data
+        #######
+
+        files = self.__runCommand(self.EVALUATE_CMD, genotype_list, self.EVALUATE_FILE, self.GENO_SAVE_FILE_FORMAT["NATIVEFRAMS"])
         ### THIS BLOCK
-        if self.importSim is not None:
-            self.rawCommand(self.importSim)
+        self.run_commands()
         ############
 
         with open(files[-1]) as f:
             data = json.load(f)
+
+        for dat, geno in zip(data, genotype_list):
+            pure_geno = geno.replace(' ','')
+            if self.config is not None and 'prefix' in self.config:
+                pure_geno = pure_geno.replace(self.config['prefix'], '')
+
+            left_chars_geno = re.sub(fitness_len_chars_sub[0], '', pure_geno)
+            geno_len = len(left_chars_geno)
+
+            if fitness_max_len[0] > 0 and geno_len > fitness_max_len[0]:
+                dat['len_fitn'] = -1
+                dat['fitn_mult'] = 0.0
+            else:
+                dat['len_fitn'] = min(fitness_len_max_value[0], geno_len * fitness_len_weight[0])
+                dat['fitn_mult'] = 1.0
+            dat['min_fitn'] = fitness_min_value[0]
+
         if len(data) > 0:
             self.__cleanUpCommandResults(files)
+            ## THIS BLOCK
+            if retOne:
+                return data[0]
+            #######
             return data
         else:
             print("Evaluating genotype: no performance data was returned in", self.EVALUATE_FILE)  # we do not delete files here
-            return None
+            return [] ## THIS
 
 
     def mutate(self, genotype: str) -> str:
@@ -265,6 +381,9 @@ class FramsticksCLI:
         Returns:
             The genotype of the mutated individual. Empty string if the mutation failed.
         """
+        if genotype.startswith('/*9*/') and fake_mutate[0]:
+            return fake_mutate_f9(genotype)
+
         files = self.__runCommand(self.MUTATE_CMD, [genotype], self.MUTATE_FILE, self.GENO_SAVE_FILE_FORMAT["RAWGENO"])
         with open(files[-1]) as f:
             newgenotype = "".join(f.readlines())
@@ -310,7 +429,6 @@ class FramsticksCLI:
         self.__cleanUpCommandResults(files)
         return square_matrix
 
-    @memoized_method(maxsize=5000)
     def isValid(self, genotype_list: List[str], validCategory:str = None) -> List[bool]:
         ## THIS BLOCK + del assert
         #assert isinstance(genotype_list, list)  # because in python str has similar capabilities as list and here it would pretend to work too, so to avoid any ambiguity
@@ -365,7 +483,7 @@ if __name__ == "__main__":
     #    if not then print a message "framsreader not available, using simple internal method to save a genotype" and proceed as it is now.
     #    So far we don't read, but we should use the proper writer to handle all special cases like quoting etc.
 
-    framsCLI = FramsticksCLI('C:/Users/Piotr/Desktop/Framsticks50rc14', None, 'pid1233')
+    framsCLI = FramsticksCLI('C:/Users/Piotr/Desktop/Framsticks50rc17', None, 'pid1233')
 
     print("Sending a direct command to Framsticks CLI that calculates \"4\"+2 yields", repr(framsCLI.sendDirectCommand("Simulator.print(\"4\"+2);")))
 
@@ -381,7 +499,7 @@ if __name__ == "__main__":
     offspring = framsCLI.crossOver(parent1, parent2)
     print("\tCrossover (Offspring):", offspring)
     print('\tDissimilarity of Parent1 and Offspring:', framsCLI.dissimilarity([parent1, offspring])[0, 1])
-    print('\tPerformance of Offspring:', framsCLI.evaluate(offspring))
+    print('\tPerformance of Offspring:', framsCLI.evaluate((offspring,)))
     print('\tValidity of Parent1, Parent 2, and Offspring:', framsCLI.isValid([parent1, parent2, offspring]))
 
     framsCLI.closeFramsticksCLI()

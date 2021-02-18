@@ -10,7 +10,7 @@ def mkdir_p(dir):
         os.mkdir(dir)
 
 home = str(Path.home())
-datafolder = os.path.join(home, 'dataFolder')
+datafolder = os.path.join(home, 'dataFolder2')
 for fname in glob.glob(datafolder+'/**/logbook_*', recursive=True):
     print(fname)
     dir, f = os.path.split(fname)

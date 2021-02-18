@@ -17,7 +17,8 @@ import tensorflow as tf
 #
 
 
-from Code.Preparation.locality_term_prep import locality_term_op, locality1_op, locality2_op
+from Code.Preparation.Utils import locality1_op, locality2_op, locality_term_op
+
 
 # def get_gradient_norm(model):
 #     with K.name_scope('gradient_norm'):
@@ -25,16 +26,38 @@ from Code.Preparation.locality_term_prep import locality_term_op, locality1_op, 
 #         norm = K.sqrt(sum([K.sum(K.square(g)) for g in grads]))
 #     return norm
 
+def fitnessLearnModel(max_len, features, lr, cells=32, regularization_base=2e-6):
+    inp = Input(shape=(max_len, features), name='fitnessModel_inputs1')
+    inp2 = Input(shape=(max_len, features), name='fitnessModel_inputs2')
 
+    mult = Multiply()([inp, inp2])
 
-def createModel(max_len, features, dimsEmbed, lr, two_layer=False, bidir=False, cells=32, regularization_base=2e-6, locality_term = False, batch_size = None, locality_power=1):
+    mask = Masking(0.0)(mult)
+    lstm_Layer = LSTM(cells, activation='relu', return_sequences=False, kernel_initializer=he_normal(24353),
+                        name='fitnessModel_lstm1',
+                        return_state=False,
+                        recurrent_regularizer=l1_l2(regularization_base / 20, regularization_base / 20),
+                        kernel_regularizer=l1_l2(regularization_base, regularization_base),
+                        bias_regularizer=l1_l2(regularization_base * 2, regularization_base * 2))
+
+    lstm_out = lstm_Layer(mask)
+    out = Dense(1, activation='linear', kernel_initializer=he_normal(53436), name='fitnessModel_denseOut')(lstm_out)
+
+    fitnessModel = Model(inputs=[inp, inp2], outputs=out)
+    fitnessModel.compile(optimizer=Adam(lr, clipnorm=1.0, clipvalue=0.5), loss='mse')
+    return fitnessModel
+
+def createModel(max_len, features, dimsEmbed, lr, two_layer=False, bidir=False, cells=32, regularization_base=2e-6, locality_term = False, batch_size = None, locality_power=1, **kwargs):
     print(tf.executing_eagerly())
     inp = Input(shape=(max_len,), name="inputs1")
     inp2 = Input(shape=(max_len,), name="inputs2")
 
     inp3 = Input(shape=(batch_size,batch_size), name="inputs3")
 
-
+    if 'regularization_base_latent' in kwargs:
+        regularization_base_latent = kwargs['regularization_base_latent']
+    else:
+        regularization_base_latent = regularization_base
 
     embedLayer = Embedding(features+1, dimsEmbed, input_length=max_len, embeddings_initializer=he_uniform(2), mask_zero=True, name='inpEmbed1')
     prev_layer = embedLayer(inp)
@@ -76,13 +99,13 @@ def createModel(max_len, features, dimsEmbed, lr, two_layer=False, bidir=False, 
     bn1 = BatchNormalization(name='bn1')(concat)
 
     hLayer = Dense(cells, activation='tanh', use_bias=True, kernel_initializer=he_normal(10), name='hDense',
-                   activity_regularizer=l1_l2(regularization_base / 2, regularization_base / 2),
-                   bias_regularizer=l1_l2(regularization_base * 2.5, regularization_base * 2.5))
+                   activity_regularizer=l1_l2(regularization_base_latent / 2, regularization_base_latent / 2),
+                   bias_regularizer=l1_l2(regularization_base_latent * 2.5, regularization_base_latent * 2.5))
     h = hLayer(bn1)
 
     cLayer = Dense(cells, activation='linear', use_bias=True, kernel_initializer=he_normal(11), name='cDense',
-                   activity_regularizer=l1_l2(regularization_base / 2, regularization_base / 2),
-                   bias_regularizer=l1_l2(regularization_base * 2.5, regularization_base * 2.5))
+                   activity_regularizer=l1_l2(regularization_base_latent / 2, regularization_base_latent / 2),
+                   bias_regularizer=l1_l2(regularization_base_latent * 2.5, regularization_base_latent * 2.5))
     c = cLayer(bn1)
 
     if locality_term:
@@ -93,25 +116,86 @@ def createModel(max_len, features, dimsEmbed, lr, two_layer=False, bidir=False, 
     decoderInpH = Input((cells,))
     decoderInpC = Input((cells,))
     decoderPrevInput = Input(((max_len, cells)))
+    print("model kwargs: ", kwargs)
+    timeWindowsConstant = False if 'timeWindowsConstant' not in kwargs else kwargs['timeWindowsConstant']
+    decoderInpDenses = False if 'decoderInpDenses' not in kwargs else kwargs['decoderInpDenses']
+    inpHZeros = False if 'inpHZeros' not in kwargs else kwargs['inpHZeros']
+    inpCZeros = False if 'inpCZeros' not in kwargs else kwargs['inpCZeros']
+    outAdditionalDense = False if 'outAdditionalDense' not in kwargs else kwargs['outAdditionalDense']
 
-    rep = RepeatVector(max_len)(decoderInpH)
-    mult = Multiply()([decoderPrevInput, rep])
+    decoderInpH_topass = decoderInpH
+    decoderInpC_topass = decoderInpC
+
+    if timeWindowsConstant:
+        rep = decoderPrevInput
+    else:
+        rep = RepeatVector(max_len)(decoderInpH)
+    # mult = Multiply()([decoderPrevInput, decoderPrevInput])
+
+    if decoderInpDenses:
+
+        decoderInpHDense1 = Dense(cells, activation='relu', kernel_initializer=he_normal(32678), name='decInpHDense1',
+                                  kernel_regularizer=l1_l2(regularization_base*1.0, regularization_base*1.0),
+                                  bias_regularizer=l1_l2(regularization_base*1.0, regularization_base*1.0))(decoderInpH)
+
+        decoderInpHDense2 = Dense(cells, activation='relu', kernel_initializer=he_normal(32679), name='decInpHDense2',
+                                  kernel_regularizer=l1_l2(regularization_base * 1.0, regularization_base * 1.0),
+                                  bias_regularizer=l1_l2(regularization_base * 1.0, regularization_base * 1.0))(decoderInpHDense1)
+
+        decoderInpH_topass = Dense(cells, activation='tanh', kernel_initializer=he_normal(72679), name='decInpHDense3',
+                                  kernel_regularizer=l1_l2(regularization_base * 1.0, regularization_base * 1.0),
+                                  bias_regularizer=l1_l2(regularization_base * 1.0, regularization_base * 1.0))(
+            decoderInpHDense2)
+
+
+        decoderInpCDense1 = Dense(cells, activation='relu', kernel_initializer=he_normal(32618), name='decInpCDense1',
+                                  kernel_regularizer=l1_l2(regularization_base * 1.0, regularization_base * 1.0),
+                                  bias_regularizer=l1_l2(regularization_base * 1.0, regularization_base * 1.0))(decoderInpC)
+
+        decoderInpCDense2 = Dense(cells, activation='relu', kernel_initializer=he_normal(32628), name='decInpCDense2',
+                                  kernel_regularizer=l1_l2(regularization_base * 1.0, regularization_base * 1.0),
+                                  bias_regularizer=l1_l2(regularization_base * 1.0, regularization_base * 1.0))(decoderInpCDense1)
+
+        decoderInpC_topass = Dense(cells, activation='linear', kernel_initializer=he_normal(32619), name='decInpCDense3',
+                                  kernel_regularizer=l1_l2(regularization_base * 1.0, regularization_base * 1.0),
+                                  bias_regularizer=l1_l2(regularization_base * 1.0, regularization_base * 1.0))(
+            decoderInpCDense2)
+
+    if inpHZeros:
+        decoderInpH_topass = Lambda(lambda x: x*0.0)(decoderInpH_topass)
+    if inpCZeros:
+        decoderInpC_topass = Lambda(lambda x: x * 0.0)(decoderInpC_topass)
+    # if not timeWindowsConstant:
+
+    mult = Multiply()([rep, decoderPrevInput])
+
     mask = Masking(0.0)(mult)
 
     prev_layer = LSTM(cells, activation='relu', return_sequences=True, kernel_initializer=he_normal(21), name='decoder1',
                       kernel_regularizer=l1_l2(regularization_base * 1.5, regularization_base * 1.5),
                       bias_regularizer=l1_l2(regularization_base * 2.5, regularization_base * 2.5))(mask,
                                                                                                     initial_state=[
-                                                                                                        decoderInpH,
-                                                                                                        decoderInpC])
+                                                                                                        decoderInpH_topass,
+                                                                                                        decoderInpC_topass])
     if two_layer:
         prev_layer = LSTM(cells, activation='relu', return_sequences=True, kernel_initializer=he_normal(35),
                           name='decoder2',
                           kernel_regularizer=l1_l2(regularization_base * 1.5, regularization_base * 1.5),
                           bias_regularizer=l1_l2(regularization_base * 2.5, regularization_base * 2.5))(prev_layer)
+    # to comment
 
-    out = TimeDistributed(Dense(features, activation='softmax', kernel_initializer=he_normal(100), name='denseOut'),
-                          name='denseOut')(prev_layer)
+    if outAdditionalDense:
+
+        outPrev = TimeDistributed(Dense(32, activation='relu', kernel_initializer=he_normal(836), name='densePrevOut',
+                                        kernel_regularizer=l1_l2(regularization_base * 2.0, regularization_base * 2.0),
+                                        bias_regularizer=l1_l2(regularization_base * 2.5, regularization_base * 2.5)
+                                        ), name='densePrevOut')(prev_layer)
+        out = TimeDistributed(Dense(features, activation='softmax', kernel_initializer=he_normal(100), name='denseOut'),
+                              name='denseOut')(outPrev)
+    else:
+        out = TimeDistributed(Dense(features, activation='softmax', kernel_initializer=he_normal(100), name='denseOut'),
+                              name='denseOut')(prev_layer)
+
 
     decoder = Model(inputs=[decoderInpH, decoderInpC, decoderPrevInput], outputs=out)
     if locality_term:

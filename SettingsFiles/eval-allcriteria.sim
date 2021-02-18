@@ -1,9 +1,11 @@
-# created Tue Apr 28 07:51:50 2020
-# by Framsticks 5.0rc14
+# Created Thu Jun 10 11:08:43 2020
+# Sample settings for evaluating many criteria of performance of a Framsticks creature.
+# See the "evalcount" parameter if you want to speed the evaluation up or have a more stable result.
+# Other important parameters are "Energy0" and "perfperiod".
 sim_params:
 stop_on:2
-last_genotype_num:0
-last_creature_num:0
+last_genotype_num:1
+last_creature_num:20
 expdef:standard-eval
 usercode:
 autosaveperiod:0
@@ -11,23 +13,23 @@ overwrite:0
 filecomm:1
 createrr:1
 groupchk:1
-creatwarnfail:0
+creatwarnfail:1
 vm_step_limit:0
 vm_step_warning:0
 vm_time_limit:0.0
 vm_time_warning:0.0
 version_int:7
 initialgen:X
-capacity:100
+capacity:0
 MaxCreated:1
 placement:0
 rotation:0
 creath:0.1
-p_nop:20.0
-p_mut:64.0
-p_xov:16.0
+p_nop:1.0
+p_mut:0.0
+p_xov:0.0
 xov_mins:0.0
-selrule:3
+selrule:2
 delrule:0
 cr_c:0.0
 cr_life:0.0
@@ -45,25 +47,18 @@ cr_nsga:0
 Energy0:1000.0
 e_meta:1.0
 feed:0
-feede0:500.0
+feede0:200.0
 foodgen:
-feedtrans:2.0
+feedtrans:1.0
 aging:0
-evalcount:0
-evalplan::fit,fit_stdev,time
+evalcount:1
+evalplan:~
+:numparts,numjoints,numneurons,numconnections,instances,lifespan,velocity,distance,vertvel,vertpos,fit,fit_stdev,time~
 evalsavedata:evaluation
 evalsavefile:genos_eval.json
-stagnation:0
-minfitness:0.0
-boostphase:1
-makesound:0
-savebest:0
-log:0
-structured_output:0
 update_nsga_ranks_needed:1
 notes:
-totaltestedcr:0
-totaltests:0
+totaltestedcr:1
 wrldtyp:0
 wrldsiz:20.0
 wrldmap:
@@ -112,14 +107,14 @@ genoper_fn:0
 genoper_fB:0
 genoper_fH:0
 genoper_fL:0
-neuadd_N:0
+neuadd_N:1
 neuadd_Nu:0
-neuadd_G:0
-neuadd_T:0
-neuadd_S:0
-neuadd_Constant:0
-neuadd_Bend_muscle:0
-neuadd_Rotation_muscle:0
+neuadd_G:1
+neuadd_T:1
+neuadd_S:1
+neuadd_Constant:1
+neuadd_Bend_muscle:1
+neuadd_Rotation_muscle:1
 neuadd_D:0
 neuadd_Fuzzy:0
 neuadd_VEye:0
@@ -173,12 +168,12 @@ f1_smX:0.05
 f1_smJunct:0.02
 f1_smComma:0.02
 f1_smModif:0.1
-f1_mut_exmod:EeWwAaSsDdGgBbHhFfMmIiRrLlQqCc
-f1_nmNeu:0.0
-f1_nmConn:0.0
-f1_nmProp:0.0
-f1_nmWei:0.0
-f1_nmVal:0.0
+f1_mut_exmod:EeWwAaSsDdGgBbHh
+f1_nmNeu:0.05
+f1_nmConn:0.1
+f1_nmProp:0.1
+f1_nmWei:1.0
+f1_nmVal:0.05
 f2_mutAddOper:0.4
 f2_mutJointElem:0.33
 f2_mutNeuroElem:0.33
@@ -197,9 +192,9 @@ f3_xovGeneTransfer:0.8
 f3_xovCrossingOver:0.2
 f4_mut_add:50.0
 f4_mut_add_div:20.0
-f4_mut_add_conn:0.0
-f4_mut_add_neupar:0.0
-f4_mut_add_rep:0.0
+f4_mut_add_conn:15.0
+f4_mut_add_neupar:5.0
+f4_mut_add_rep:10.0
 f4_mut_add_simp:50.0
 f4_mut_del:20.0
 f4_mut_mod:30.0
@@ -219,7 +214,7 @@ f8_mut_del_cond:8.0
 f8_mut_add_loop:0.0
 f8_mut_del_loop:0.0
 f8_mut_del_prod:8.0
-f9_mut:0.25
+f9_mut:0.1
 fF_xover:0.5
 fn_xover:0.9
 fn_xover_random:1
@@ -354,7 +349,7 @@ name:Food
 energy:1
 death:1
 initial_nn_active:0
-nn_paused:0
+nn_paused:1
 perfperiod:100
 stabilperiod:100
 killnostable:1000000
@@ -368,4 +363,3 @@ initial_self_collisions:0
 em_stat:0.0
 em_dyn:0.0
 en_assim:0.0
-

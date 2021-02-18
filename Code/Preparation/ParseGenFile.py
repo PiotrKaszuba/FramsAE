@@ -23,30 +23,30 @@ def parseFitness(path):
 
 def parseGenFile(path, representation, dict = None, representation_match_part=r''):
     #path = 'f4-len-up-tp-100.gen'
-    # f = open(path, 'r')
-    # text = f.read()
-    # # if dict is not None:
-    # #     text = re.sub(r"(genotype:" + representation_match_part +r")([^\n]+\n)", lambda x: x.group(1) + re.sub('[^\n' + dict + ']', '', x.group(2)), text)
-    # #     f2 = open(path+"_copy", 'w')
-    # #     f2.write(text)
-    # genos = re.findall(r"genotype:[^\n]+\n", text, re.U)
-    # #genos = re.findall(r":\~\n[^\n]+\~", text, re.U)
-    # additional_symbols = 0
-    # if representation != 'f1':
-    #     additional_symbols += 5
-    # for i in range( len(genos)):
-    #     #genos[i] = genos[i][3:-1]
-    #     genos[i] = genos[i][9+additional_symbols:-1]
-    #     genos[i] = 'S' + genos[i] + 'T'
-
-    genos = fr.load(path)
-
+    f = open(path, 'r')
+    text = f.read()
+    # if dict is not None:
+    #     text = re.sub(r"(genotype:" + representation_match_part +r")([^\n]+\n)", lambda x: x.group(1) + re.sub('[^\n' + dict + ']', '', x.group(2)), text)
+    #     f2 = open(path+"_copy", 'w')
+    #     f2.write(text)
+    genos = re.findall(r"genotype:[^\n]+\n", text, re.U)
+    #genos = re.findall(r":\~\n[^\n]+\~", text, re.U)
+    additional_symbols = 0
     if representation != 'f1':
-        parse_f = lambda x: 'S'+x['genotype'][5:]+'T'
-    else:
-        parse_f = lambda x: 'S'+x['genotype']+'T'
+        additional_symbols += 5
+    for i in range( len(genos)):
+        #genos[i] = genos[i][3:-1]
+        genos[i] = genos[i][9+additional_symbols:-1]
+        genos[i] = 'S' + genos[i] + 'T'
 
-    genos = [parse_f(gen) for gen in genos]
+    # genos = fr.load(path)
+    #
+    # if representation != 'f1':
+    #     parse_f = lambda x: 'S'+x['genotype'][5:]+'T'
+    # else:
+    #     parse_f = lambda x: 'S'+x['genotype']+'T'
+    #
+    # genos = [parse_f(gen) for gen in genos]
 
     return genos
 
