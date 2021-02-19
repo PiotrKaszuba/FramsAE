@@ -66,7 +66,7 @@ d) for original representations: we use 'nolatent' and actual representation; we
 8. for PUT labs mincpus per machine = 2 should be safe here, ~line 221;
 
 9. set how many times you want run each unique process, say 25 times:
-~line 26: task_evol_test_no = list(range(25))
+~line 60: task_evol_test_no = list((np.arange(25) + 1))
 
 10. now look in runFile.py under, values here are mostly OK? don't need to change:
 ~line 57:

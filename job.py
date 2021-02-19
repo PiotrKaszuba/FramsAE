@@ -23,7 +23,7 @@ options_tests = ['19'] #list(range(1))
 generations = '250'
 population_size = '50'
 tourney_size = '3' # 1 equals random search
-task_evol_test_no = list(range(25))
+task_evol_test_no = list(range(1))
 # task_evol_test_no = list((np.arange(1) + 1))
 # available options:
 tasks = ['train', 'evol', 'collect_data', 'evaluate_model', 'FDC']
@@ -57,7 +57,7 @@ elif type_of_run == 'evol_random':
     task_evol_test_no = list((np.arange(2)+1))
 elif type_of_run == 'mutDist_latent':
     latent = latents[1]
-    task_evol_test_no = list((np.arange(10) + 1))
+    task_evol_test_no = list((np.arange(15) + 11))
 # elif type_of_run == 'collect_data'
 
 
@@ -150,7 +150,7 @@ additional_options_dict = [
     # {'placeholder' : 823},
     {'placeholder':863, 'latent':'nolatent', 'representation': 'f9' , 'locality': '0-0n', 'test':999,},
     {'placeholder':877, 'latent': 'nolatent', 'representation': 'f1' , 'locality': '0-0n', 'test':999,},
-    
+
     {'placeholder' : 827, 'latent' : 'latent', 'locality': '0-0n', 'test':19, 'representation':'f1',},
     {'placeholder' : 829, 'latent' : 'latent', 'locality': '3', 'test':19, 'representation':'f1',},
     {'placeholder' : 839, 'latent' : 'latent', 'locality': '3f', 'test':19, 'representation':'f1',},
