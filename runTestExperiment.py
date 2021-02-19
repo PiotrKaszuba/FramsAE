@@ -34,7 +34,7 @@ from Code.FramsticksCli import fitness_min_value, fake_fitness, fake_mutate, fit
 
 def runProcess_evol(run, locality, test, fake_f=False, latent = 'latent', evol_use_encoder=False, fake_m=False, redir_out=True, **kwargs):
     fake_fitness[0] = fake_f
-    fitness_min_value[0] = 0.0
+    fitness_min_value[0] = -1
     fake_mutate[0] = fake_m
     fitness_len_max_value[0] = 0.0
     fitness_len_weight[0] = 0.0
@@ -46,7 +46,7 @@ def runProcess_evol(run, locality, test, fake_f=False, latent = 'latent', evol_u
                         task=task, locality=locality, test=test, frams_path=frams_path, clear_files=clear_files, tournsize=tournsize,
                         task_test=run, model_kwargs=kwargs)
     config['pid_extension'] = str(run) + 'FF'
-    config['framsexe'] = 'frams-vs.exe'
+    config['framsexe'] = 'frams.exe'
     config['mut_magnitude'] = 0.25
     config['evol_use_encoder'] = evol_use_encoder
     config['evol_keepbest'] = True
@@ -191,13 +191,13 @@ number = 0
 add_params_dict = {}
 
 long_genos = None
-representation = 'f9'
+representation = 'f1'
 
 data_path = 'mods2/'
 load_dir = 'testGenos/'
 
 # locality = '3' # '0-0n'
-frams_path = 'C:/Users/Piotr/Desktop/Framsticks50rc17'
+frams_path = 'C:/Users/Piotr/Desktop/Framsticks50rc18'
 clear_files = 'True'
 
 if False:
@@ -284,7 +284,7 @@ add_params_dict['regularization_base_latent'] = 2e-6
 
 # runProcess_evol(57*8659, '3f', test, fake_f=False, latent='latent', evol_use_encoder=False, fake_m=True, redir_out=False, **add_params_dict)
 # runProcess_train(131*43, '3f', test, False, **add_params_dict)
-runProcess_evol(35271, '3f', '19', latent='nolatent', fake_m=True, **add_params_dict)
+runProcess_evol(35271, '3f', '19', latent='nolatent', fake_m=True, redir_out=False, **add_params_dict)
 # for i in [17, 19, 23]:
 # runProcess_mutDist(127*43*97, '0-0n', test, False, latent='nolatent', **add_params_dict)
 raise NotImplementedError()

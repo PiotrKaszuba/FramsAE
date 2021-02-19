@@ -29,7 +29,7 @@ all_labs = all_labs * 1000
 6. make sure paths are right:
 ~line 97:
 data_dir = os.path.join(home, 'dataFolder2')
-frams_path = os.path.join(home, 'Framsticks50rc17')
+frams_path = os.path.join(home, 'Framsticks50rc18')
 
 7. put as placeholder unique prime number (so your results and processes have unique ids - more important for evolution):
 specifying multiple dicts inside will run your config multiple times so if you wanted to go with different series of models (test or options_tests) you could do smth like:

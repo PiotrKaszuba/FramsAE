@@ -95,10 +95,10 @@ def frams_crossover_lat(evolution_model : EvolutionModel, individual1, individua
 
         indices = np.random.choice(whereTrue)
         whereTrue = np.delete(whereTrue, np.where(whereTrue == indices))
-        individual1[0] = individuals_generated[indices]
+        individual1 = creator.Individual(( individuals_generated[indices],))
     if len(whereTrue) > 0:
         indices = np.random.choice(whereTrue)
-        individual2[0] = individuals_generated[indices]
+        individual2=creator.Individual(( individuals_generated[indices],))
 
     # if valid:
     #     print("Good cross: " + str(fram))
@@ -165,10 +165,10 @@ def frams_crossover_lat2(evolution_model : EvolutionModel, individual1, individu
 
         indices = np.random.choice(whereTrue)
         whereTrue = np.delete(whereTrue, np.where(whereTrue == indices))
-        individual1[0] = individuals_generated[indices]
+        individual1 = creator.Individual(( individuals_generated[indices],))
     if len(whereTrue) > 0:
         indices = np.random.choice(whereTrue)
-        individual2[0] = individuals_generated[indices]
+        individual2 = creator.Individual(( individuals_generated[indices],))
 
     # if valid:
     #     print("Good cross: " + str(fram))
@@ -223,7 +223,7 @@ def frams_mutate_lat(evolution_model : EvolutionModel, individual):
 
         indices = np.random.choice(np.where(np.array(valids))[0])
 
-        individual[0] = individuals_generated[indices]
+        individual = creator.Individual((individuals_generated[indices],))
 
     # for i in range(5):
     #
@@ -288,8 +288,12 @@ def frams_crossover(evolution_model : EvolutionModel, individual1, individual2):
     geno2 = evolution_model.config['prefix']+individual2[
         0]  # [0] because we can't (?) have a simple str as a deap genotype/individual, only list of str.
     try:
-        individual1[0] = evolution_model.framsCLI.crossOver(geno1, geno2)[len(evolution_model.config['prefix']):]
-        individual2[0] = evolution_model.framsCLI.crossOver(geno1, geno2)[len(evolution_model.config['prefix']):]
+        t1 = evolution_model.framsCLI.crossOver(geno1, geno2)
+        t1 = t1[len(evolution_model.config['prefix']):]
+        t2 = evolution_model.framsCLI.crossOver(geno1, geno2)
+        t2= t2[len(evolution_model.config['prefix']):]
+        individual1 = creator.Individual((t1,))
+        individual2 = creator.Individual((t2,))
     except:
         evolution_model.createCLI()
     return individual1, individual2
@@ -297,7 +301,8 @@ def frams_crossover(evolution_model : EvolutionModel, individual1, individual2):
 
 def frams_mutate(evolution_model : EvolutionModel, individual):
     try:
-        individual[0] = evolution_model.framsCLI.mutate(evolution_model.config['prefix']+individual[0])[len(evolution_model.config['prefix']):]
+        t= evolution_model.framsCLI.mutate(evolution_model.config['prefix']+individual[0])[len(evolution_model.config['prefix']):]
+        individual = creator.Individual((t,))
     except:
         evolution_model.createCLI()
     return individual,

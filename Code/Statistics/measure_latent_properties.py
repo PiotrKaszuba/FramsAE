@@ -86,7 +86,7 @@ def plot_validitiy(xs, accs, ys, mutations, howMany, total_acc, sett, suff, conf
 
 
 def checkValidity(genos, howMany, config):
-    framsCLI = FramsticksCLI('C:/Users/Piotr/Desktop/Framsticks50rc17', None)
+    framsCLI = FramsticksCLI('C:/Users/Piotr/Desktop/Framsticks50rc18', None)
 
     total_acc, xs, accs, ys = get_Accs(genos, howMany, framsCLI, config)
 

@@ -6,7 +6,7 @@ import json
 import sys, os
 import argparse
 import numpy as np
-
+import framsreader
 ###########3 THIS BLOCK
 import re
 fake_fitness = [False]
@@ -112,6 +112,7 @@ class FramsticksCLI:
     ISVALID_CMD = "isvalid_many"
     ISVALID_FILE = "validity.txt"
     MUTATE_CMD = "mutate_many"
+    MUTATE_CMD_SINGLE = "mutate"
     MUTATE_FILE = "mutation_results.gen"
     #THIS BLOCK
     GENERATE_FRAMS = 'generateframs'
@@ -384,10 +385,18 @@ class FramsticksCLI:
         if genotype.startswith('/*9*/') and fake_mutate[0]:
             return fake_mutate_f9(genotype)
 
-        files = self.__runCommand(self.MUTATE_CMD, [genotype], self.MUTATE_FILE, self.GENO_SAVE_FILE_FORMAT["RAWGENO"])
-        with open(files[-1]) as f:
-            newgenotype = "".join(f.readlines())
+        files = self.__runCommand(self.MUTATE_CMD, [genotype], self.MUTATE_FILE,
+                                  self.GENO_SAVE_FILE_FORMAT["NATIVEFRAMS"])
+        genos = framsreader.load(files[-1], "gen file")
         self.__cleanUpCommandResults(files)
+        newgenotype = [g["genotype"] for g in genos][0]
+        if 'invalid' in newgenotype:
+            a=0
+            return genotype
+        # files = self.__runCommand(self.MUTATE_CMD, [genotype], self.MUTATE_FILE, self.GENO_SAVE_FILE_FORMAT["RAWGENO"])
+        # with open(files[-1]) as f:
+        #     newgenotype = "".join(f.readlines())
+        # self.__cleanUpCommandResults(files)
         return newgenotype
 
 
@@ -400,7 +409,11 @@ class FramsticksCLI:
         with open(files[-1]) as f:
             child_genotype = "".join(f.readlines())
         self.__cleanUpCommandResults(files)
+        # valids = self.isValid([child_genotype])[0]
+        # if not valids:
+        #     return random.choice([genotype_parent1, genotype_parent2])
         return child_genotype
+
 
     ########### THIS BLOCK
     def rawCommand(self, command, marker="Simulator.load"):
@@ -483,7 +496,7 @@ if __name__ == "__main__":
     #    if not then print a message "framsreader not available, using simple internal method to save a genotype" and proceed as it is now.
     #    So far we don't read, but we should use the proper writer to handle all special cases like quoting etc.
 
-    framsCLI = FramsticksCLI('C:/Users/Piotr/Desktop/Framsticks50rc17', None, 'pid1233')
+    framsCLI = FramsticksCLI('C:/Users/Piotr/Desktop/Framsticks50rc18', None, 'pid1233')
 
     print("Sending a direct command to Framsticks CLI that calculates \"4\"+2 yields", repr(framsCLI.sendDirectCommand("Simulator.print(\"4\"+2);")))
 
