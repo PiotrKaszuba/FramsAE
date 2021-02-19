@@ -867,7 +867,7 @@ def eaGenerateUpdate2(toolbox, ngen , evolution_model : EvolutionModel, multiple
     return population, logbook
 
 def eaSimple2(population, toolbox, cxpb, mutpb, ngen, evolution_model : EvolutionModel, multiple_evaluate_f, stats=None,
-             halloffame=None, verbose=__debug__, logbook=None, keepbest=False):
+             halloffame=None, verbose=__debug__, logbook=None, keepbest=False, save_every=None):
     """This algorithm reproduce the simplest evolutionary algorithm as
     presented in chapter 7 of [Back2000]_.
 
@@ -980,6 +980,8 @@ def eaSimple2(population, toolbox, cxpb, mutpb, ngen, evolution_model : Evolutio
         logbook.record(gen=gen, nevals=len(invalid_ind), **record)
         if verbose:
             print(logbook.stream, flush=True)
+        if save_every:
+            save_every(logbook)
 
     return population, logbook
 
@@ -1076,6 +1078,10 @@ def runEvolLatent(config, gene, pop_s, latent, cmaes=False, iterations=10, redir
 
             logbook = tools.Logbook()
             sys.stdout.flush()
+            def save_results(logbook):
+                with open(os.path.join(config['data_path'], 'logbook_%s' % str(iteration)), 'wb') as f:
+                    pickle.dump([logbook, EM.config['model_name'], fake_fitness[0], config['evol_use_encoder'], config['evol_keepbest'], fake_mutate[0], config, fitness_len_weight[0], fitness_len_max_value[0], fitness_max_len[0], fitness_len_chars_sub[0], fitness_min_value[0]], f)
+
             def runAlg(pop, log):
                 try:
                     if not cmaes:
@@ -1085,7 +1091,7 @@ def runEvolLatent(config, gene, pop_s, latent, cmaes=False, iterations=10, redir
                                                         stats=stats,
                                                        halloffame=hof,
                                                        verbose=True,
-                                             keepbest=config['evol_keepbest'])
+                                             keepbest=config['evol_keepbest'], save_every=save_results)
                     else:
                         pop, log = eaGenerateUpdate2(toolbox, ngen=GENERATIONS, stats=stats, halloffame=hof, evolution_model=EM, multiple_evaluate_f=multiple_evaluate_f, verbose=True)
                 except Exception as e:
@@ -1095,10 +1101,7 @@ def runEvolLatent(config, gene, pop_s, latent, cmaes=False, iterations=10, redir
 
 
             pop, logbook = runAlg(pop, logbook)
-
-            with open(os.path.join(config['data_path'], 'logbook_%s' % str(iteration)), 'wb') as f:
-                pickle.dump([logbook, EM.config['model_name'], fake_fitness[0], config['evol_use_encoder'], config['evol_keepbest'], fake_mutate[0], config, fitness_len_weight[0], fitness_len_max_value[0], fitness_max_len[0], fitness_len_chars_sub[0], fitness_min_value[0]], f)
-
+            save_results(logbook)
             print('Best individuals:')
             for best in hof:
                 if latent == 'nolatent':
