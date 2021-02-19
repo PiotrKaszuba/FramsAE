@@ -63,7 +63,11 @@ if __name__ == "__main__":
 
         config['let_not_newest_weights'] = True
         redir_out = True
-        runEvolLatent(config, gene=gene, pop_s=pop, latent=latent, cmaes=config['cmaes'], iterations=50,
+        iterations = 1
+        if not latent == 'latent':
+            iterations = 4
+
+        runEvolLatent(config, gene=gene, pop_s=pop, latent=latent, cmaes=config['cmaes'], iterations=iterations,
                       redir_out=redir_out)
 
     elif task == 'train':

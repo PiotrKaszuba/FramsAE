@@ -1,0 +1,90 @@
+start editing params in job.py, ~line = approximate line
+
+0. skip those, leave only 1 option in, this can be empty string - this is required to have 1 option at least so the product of configs is not touched,
+we will realize those later, as we want to bind them to unique placeholder values due to the results collection pipeline design:
+~line 16: options_representation = ['']
+~line 21: options_locality = ['']
+
+1. choose evolution params:
+~line 23:
+generations = '250'
+population_size = '50'
+tourney_size = '3' # 1 equals random search
+
+2. choose saved models series in /home/inf126856/dataFolder2 -> chosen '19' -> ~line 22: options_tests = ['19']
+3. task name = 'evol' -> ~line 33: task = tasks[1]
+4. run type -> ~line 34: type_of_run = types_of_run[2] :
+elif type_of_run == 'evol_autoencoders':
+    pass
+
+Nothing new here..
+
+5. Check if labs are available and adjust / remove distribution of next jobs to be run in different labs:
+~line 66:
+# LAB settings
+all_labs = ['ci'] * 2 + ['43'] * 2  + ['45'] * 2  + ['44'] * 2
+all_labs = all_labs * 1000
+
+
+6. make sure paths are right:
+~line 97:
+data_dir = os.path.join(home, 'dataFolder2')
+frams_path = os.path.join(home, 'Framsticks50rc17')
+
+7. put as placeholder unique prime number (so your results and processes have unique ids - more important for evolution):
+specifying multiple dicts inside will run your config multiple times so if you wanted to go with different series of models (test or options_tests) you could do smth like:
+[
+ {'placeholder':809, 'test':18},
+ {'placeholder':811, 'test':19},
+ {'placeholder':821, 'test':20},
+]
+ and so on with other keys..
+
+ SO our config for evolution here is important:
+
+
+~line 105:
+additional_options_dict = {
+
+    {'placeholder' : 827, 'latent' : 'latent', 'locality': '0-0n', 'test':19, 'representation':'f1',},
+    {'placeholder' : 829, 'latent' : 'latent', 'locality': '3', 'test':19, 'representation':'f1',},
+    {'placeholder' : 839, 'latent' : 'latent', 'locality': '3f', 'test':19, 'representation':'f1',},
+    {'placeholder' : 853, 'latent' : 'latent', 'locality': '0-0n', 'test':19, 'representation':'f9',},
+    {'placeholder' : 857, 'latent' : 'latent', 'locality': '3', 'test':19, 'representation':'f9',},
+    {'placeholder' : 859, 'latent' : 'latent', 'locality': '3f', 'test':19, 'representation':'f9',},
+
+    {'placeholder':863, 'latent':'nolatent', 'representation': 'f9' , 'locality': '0-0n', 'test':999,},
+    {'placeholder':877, 'latent': 'nolatent', 'representation': 'f1' , 'locality': '0-0n', 'test':999,},
+}
+
+a) we use different primes (and different than previous experiments..) for each separate config in placeholder
+b) we use 'latent' for autoencoder models and 'nolatent' for original representation evolution
+c) we use appropriate model version (test), 'locality', representation
+
+d) for original representations: we use 'nolatent' and actual representation; we also have to specify locality even though it is not used (there is unnecessary processing of it) and some test -> there will be created fake model directory with this 'test' number for results from it;
+
+8. for PUT labs mincpus per machine = 2 should be safe here, ~line 221;
+
+9. set how many times you want run each unique process, say 25 times:
+~line 26: task_evol_test_no = list(range(25))
+
+10. now look in runFile.py under, values here are mostly OK? don't need to change:
+~line 57:
+    if task == 'evol':
+        # config['framsexe'] = 'frams-vs.exe'
+        config['mut_magnitude'] = 0.2 -> scalling factor of cov matrix to draw mutation from
+        config['evol_use_encoder'] = False -> whether to use sp. genetic operators
+        config['evol_keepbest'] = True -> elitism
+        config['cmaes'] = False -> cmaes (only for 'latent' -> original representations will break with it)
+        ..
+        iterations = 1  -> it will run only 1 evolution for autoencoder model per process but 4 for original representation (it is faster there)
+        if not latent == 'latent':
+            iterations = 4
+
+11. update your files .. job.py and possibly runFile.py and others on server; for me /home/inf126856/workspace
+12. ssh and cd into /home/inf126856/workspace
+13. python job.py -> should start 8 configurations X 25 x run = 200 tasks
+
+14. results will be available in /home/inf126856/dataFolder2/<model_name>/logbook_<number>
+
+15. they should be collected by Code->Statistics->collectLogbooks.py, downloaded and used for plot generations, but this file does not cover that.

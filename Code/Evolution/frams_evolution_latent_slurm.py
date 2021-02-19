@@ -985,6 +985,9 @@ def eaSimple2(population, toolbox, cxpb, mutpb, ngen, evolution_model : Evolutio
 
 
 def runEvolLatent(config, gene, pop_s, latent, cmaes=False, iterations=10, redir_out = True):
+    max_iterations = 50
+    if iterations > max_iterations:
+        iterations = max_iterations
     # A demo run: optimize OPTIMIZATION_CRITERIA
     # find max logbook
     iteration = -1
@@ -996,8 +999,8 @@ def runEvolLatent(config, gene, pop_s, latent, cmaes=False, iterations=10, redir
             pass
 
     files = list(set(files))
-    iteration += config['task_test'] * iterations
-    files = [(filename, ind) for filename, ind in files if ind > iteration and ind <= iteration + iterations]
+    iteration += config['task_test'] * max_iterations
+    files = [(filename, ind) for filename, ind in files if ind > iteration and ind <= iteration + max_iterations]
     if len(files) > 0:
         files = sorted(files, key=lambda x: x[1], reverse=True)
         iteration = int(files[0][1])
@@ -1025,7 +1028,7 @@ def runEvolLatent(config, gene, pop_s, latent, cmaes=False, iterations=10, redir
 
 
 
-    while iteration < iterations * (config['task_test']+1)-1:
+    while iteration < max_iterations * (config['task_test']+1)-1:
         iteration += 1
         with open(os.path.join(config['data_path'],'experiment_outFile_%s' % str(iteration)), 'w') as outF:
             if redir_out:

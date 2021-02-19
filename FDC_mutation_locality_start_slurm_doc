@@ -1,0 +1,60 @@
+start editing params in job.py, ~line = approximate line
+
+0. choose representations and model types:
+~line 16: options_representation = ['f1', 'f9']
+~line 21: options_locality = ["0-0n", "3", "3f"]
+
+1. choose saved models series in /home/inf126856/dataFolder2 -> chosen '19' -> ~line 22: options_tests = ['19']
+2. task name = 'collect_data' -> ~line 33: task = tasks[2]
+3. run type -> ~line 34: type_of_run = types_of_run[4] :
+
+elif type_of_run == 'mutDist_latent':
+    latent = latents[1]
+    task_evol_test_no = list((np.arange(10) + 1))
+
+It sets type of model to be loaded to be actually autoencoder model instead of pure 'f1' / 'f9' representations without autoencoders
+And gives us 10 runs with partial IDS from 1 to 10
+
+4. Check if labs are available and adjust / remove distribution of next jobs to be run in different labs:
+~line 66:
+# LAB settings
+all_labs = ['ci'] * 2 + ['43'] * 2  + ['45'] * 2  + ['44'] * 2
+all_labs = all_labs * 1000
+
+5. make sure paths are right:
+~line 97:
+data_dir = os.path.join(home, 'dataFolder2')
+frams_path = os.path.join(home, 'Framsticks50rc17')
+
+6. put as placeholder unique prime number (so your results and processes have unique ids - more important for evolution):
+~line 105:
+additional_options_dict = [
+
+    {'placeholder' : 823}
+]
+specifying multiple dicts inside will run your config multiple times so if you wanted to go with different series of models (test or options_tests) you could do smth like:
+
+ {'placeholder':809, 'test':18},
+ {'placeholder':811, 'test':19},
+ {'placeholder':821, 'test':20},
+
+ and so on with other keys..
+
+ 7. for PUT labs mincpus per machine = 2 should be safe here, ~line 221;
+ 8. now look in runFile.py under, values here are mostly OK? don't need to change:
+ ~line 71
+     elif task == 'collect_data':
+        from Code.Statistics.calculateMutateDistance import runCalculate
+     You can choose calculateMutDistPowers -> powers of mutation to examine
+     calculateOriginalRepresentation -> is for model / original representation
+
+     config['initial_sample_power'] = 2.0 -> scale of learned cov matrix on train to sample from -> bigger higher diversity of centroid sampling
+        config['calculateNumCentroids'] = 50 -> num of centroids
+        config['calculateNumMutants'] = 50 -> num of mutants per centroid
+
+9. update your files .. job.py aand possibly runFile.py and others on server; for me /home/inf126856/workspace
+10. ssh and cd into /home/inf126856/workspace
+11. python job.py -> should start 2 x representation X 3 x locality options X 10 x run = 60 tasks
+12. expect your results under /home/inf126856/dataFolder2/mutateDistance/<model_name>/ ; -> model_name_mutDist_<run_id>
+
+13. results can be used for FDC calculation later, or for mutatation locality plots, but that's not covered in this file.

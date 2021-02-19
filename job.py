@@ -13,25 +13,25 @@ def mkdir_p(dir):
 clear_files = 'True'
 
 # important options:
-options_representation = ['f1', 'f9']
+options_representation = ['']
 options_long_genos = ['None']
 options_cells = ['64']#, '56', '48']
 options_twoLayer = ['twoLayer']
 options_bidir = ['Bidir']
-options_locality = ["0-0n"]
-options_tests = ['18'] #list(range(1))
-generations = '150'
+options_locality = [""]
+options_tests = ['19'] #list(range(1))
+generations = '250'
 population_size = '50'
 tourney_size = '3' # 1 equals random search
-task_evol_test_no = list(range(1))
+task_evol_test_no = list(range(25))
 # task_evol_test_no = list((np.arange(1) + 1))
 # available options:
 tasks = ['train', 'evol', 'collect_data', 'evaluate_model', 'FDC']
 types_of_run = ['locality_train', 'noloc_train', 'evol_autoencoders', 'evol_random', 'mutDist_latent']
 latents = ['nolatent', 'latent']
 
-task = tasks[0]
-type_of_run = types_of_run[0]
+task = tasks[1]
+type_of_run = types_of_run[4]
 latent = latents[1]
 # MAIN BRANCHES:
 if type_of_run == "locality_train":
@@ -45,10 +45,11 @@ elif type_of_run == 'noloc_train':
     options_twoLayer = ['oneLayer', 'twoLayer']
     options_bidir = ['Singledir', 'Bidir']
 elif type_of_run == 'evol_autoencoders':
-    options_locality = ["3", "3f"]
+    pass
+    # options_locality = ["3", "3f"]
     # options_locality = ['0-0n', '3', '3f']#["3", "3l", "0n", "3f"]
     # options_tests = [1, 2]
-    task_evol_test_no = list((np.arange(1) + 1))
+    # task_evol_test_no = list((np.arange(1) + 1))
 
 elif type_of_run == 'evol_random':
     options_locality = ['0-0n']
@@ -63,8 +64,8 @@ elif type_of_run == 'mutDist_latent':
 
 
 # LAB settings
-all_labs = ['ci'] * 6 + ['43'] * 6  + ['45'] * 6  + ['44']*6
-
+all_labs = ['ci'] * 2 + ['43'] * 2  + ['45'] * 2  + ['44'] * 2
+all_labs = all_labs * 1000
 # nodes = []
 # Nodes settings
 # for i in range(4): #up to 6
@@ -143,9 +144,22 @@ additional_options_dict = [
     # {'placeholder':61*251, 'latent':'nolatent', 'representation': 'f9'},
     # {'placeholder': 67*251, 'latent': 'nolatent', 'representation': 'f1'},
     # for
-    {'placeholder':809, 'test':18},
-    {'placeholder':811, 'test':19},
-    {'placeholder':821, 'test':20},
+    # {'placeholder':809, 'test':18},
+    # {'placeholder':811, 'test':19},
+    # {'placeholder':821, 'test':20},
+    # {'placeholder' : 823},
+    {'placeholder':863, 'latent':'nolatent', 'representation': 'f9' , 'locality': '0-0n', 'test':999,},
+    {'placeholder':877, 'latent': 'nolatent', 'representation': 'f1' , 'locality': '0-0n', 'test':999,},
+    
+    {'placeholder' : 827, 'latent' : 'latent', 'locality': '0-0n', 'test':19, 'representation':'f1',},
+    {'placeholder' : 829, 'latent' : 'latent', 'locality': '3', 'test':19, 'representation':'f1',},
+    {'placeholder' : 839, 'latent' : 'latent', 'locality': '3f', 'test':19, 'representation':'f1',},
+    {'placeholder' : 853, 'latent' : 'latent', 'locality': '0-0n', 'test':19, 'representation':'f9',},
+    {'placeholder' : 857, 'latent' : 'latent', 'locality': '3', 'test':19, 'representation':'f9',},
+    {'placeholder' : 859, 'latent' : 'latent', 'locality': '3f', 'test':19, 'representation':'f9',},
+
+
+
 ]
 
 i = 0
@@ -217,9 +231,9 @@ for param in params:
         fh.writelines("#SBATCH --error=%s/%s.err\n" % (outdir,instance_name))
         fh.writelines("#SBATCH --qos=normal\n")
         #fh.writelines("#SBATCH --nodelist=%s\n" % node)
-        fh.writelines("#SBATCH --mincpus=4\n")
+        fh.writelines("#SBATCH --mincpus=2\n")
         fh.writelines("#SBATCH --mail-type=ALL\n")
-        fh.writelines("#SBATCH --mail-user=piotr.kaszuba@student.put.poznan.pl\n")
+        # fh.writelines("#SBATCH --mail-user=piotr.kaszuba@student.put.poznan.pl\n")
         #fh.writelines("echo hello")
         fh.writelines("stdbuf -o0 -e0 python3 $HOME/workspace/runFile.py %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s\n" % (model_name, representation, long_genos, cells, twoLayer, bidir, param_data, read_directory, task, loc, tes, frams_path, clear_files, lat, trn_siz, generations, population_size, task_tes))
 
