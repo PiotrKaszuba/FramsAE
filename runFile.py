@@ -5,9 +5,11 @@ from Code.Evolution.frams_evolution_latent_slurm import runEvolLatent
 from Code.Train.prepareTrain import prepareTrain
 from Code.Preparation.configuration import *
 from Code.FramsticksCli import fake_fitness, fitness_min_value, fake_mutate, fitness_len_weight, fitness_len_max_value, fitness_max_len, fitness_len_chars_sub
-
+import time
 import sys
 if __name__ == "__main__":
+
+    script_start = time.time()
 
     model_name = sys.argv[1] if sys.argv[1] != 'None' else None
     representation = sys.argv[2] if sys.argv[2] != 'None' else None
@@ -27,6 +29,7 @@ if __name__ == "__main__":
     gene = int(sys.argv[16]) if sys.argv[16] != 'None' else None
     pop = int(sys.argv[17]) if sys.argv[17] != 'None' else None
     task_test = int(sys.argv[18]) if sys.argv[18] != 'None' else None
+    timestamp = float(sys.argv[19]) if sys.argv[19] != 'None' else None
     task = sys.argv[9] if sys.argv[9] != 'None' else None
 
     ## CONSTANT
@@ -46,7 +49,7 @@ if __name__ == "__main__":
     # np.random.seed(80)  # 30 for test, 2 for train,
 
     ###################
-    config = {}
+    config = {'timestamp' : timestamp, 'script_start' : script_start}
     config = get_config(model_name, representation, long_genos, cells, twoLayer, bidir, data_path, load_dir, task=task,
                         locality=locality, test=test, frams_path=frams_path, clear_files=clear_files, tournsize=tournsize, task_test=task_test,
                         model_kwargs=add_params_dict, existing_config=config)

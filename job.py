@@ -4,6 +4,7 @@ import os
 from pathlib import Path
 from time import sleep
 import numpy as np
+import time
 def mkdir_p(dir):
     '''make a directory (dir) if it doesn't exist'''
     if not os.path.exists(dir):
@@ -205,7 +206,8 @@ for rep in options_representation:
                                     i+=1
                                     params.append(d)
 
-print("ok")
+timestamp = time.time()
+print("ok, timestamp %s" % timestamp)
 for param in params:
 
 
@@ -250,7 +252,7 @@ for param in params:
         fh.writelines("#SBATCH --mail-type=ALL\n")
         # fh.writelines("#SBATCH --mail-user=piotr.kaszuba@student.put.poznan.pl\n")
         #fh.writelines("echo hello")
-        fh.writelines("stdbuf -o0 -e0 python3 $HOME/workspace/runFile.py %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s\n" % (model_name, representation, long_genos, cells, twoLayer, bidir, param_data, read_directory, task, loc, tes, frams_path, clear_files, lat, trn_siz, generations, population_size, task_tes))
+        fh.writelines("stdbuf -o0 -e0 python3 $HOME/workspace/runFile.py %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s\n" % (model_name, representation, long_genos, cells, twoLayer, bidir, param_data, read_directory, task, loc, tes, frams_path, clear_files, lat, trn_siz, generations, population_size, task_tes, timestamp))
 
     os.system("chmod 777 %s" % job_file)
     os.system("stdbuf -o0 -e0 sbatch %s" % job_file)

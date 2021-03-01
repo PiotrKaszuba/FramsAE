@@ -12,6 +12,7 @@ from Code.Preparation.locality_term_prep import createCLI
 from Code.FramsticksCli import fake_fitness, fitness_min_value, fake_mutate, fitness_max_len, fitness_len_max_value, fitness_len_weight, fitness_len_chars_sub
 from operator import attrgetter
 import random
+import time
 # Note: this is much less efficient than running the evolution directly in Framsticks, so use only when required or when poor performance is acceptable!
 
 
@@ -992,6 +993,8 @@ def eaSimple2(population, toolbox, cxpb, mutpb, ngen, evolution_model : Evolutio
 
 
 def runEvolLatent(config, gene, pop_s, latent, cmaes=False, iterations=10, redir_out = True):
+    task_start = time.time()
+    config['task_start'] = task_start
     max_iterations = 50
     if iterations > max_iterations:
         iterations = max_iterations
@@ -1037,6 +1040,7 @@ def runEvolLatent(config, gene, pop_s, latent, cmaes=False, iterations=10, redir
 
     while iteration < max_iterations * (config['task_test']) + iterations -1:
         iteration += 1
+        config['start_iteration_%s' % iteration] = time.time()
         with open(os.path.join(config['data_path'],'experiment_outFile_%s' % str(iteration)), 'w') as outF:
             if redir_out:
                 sys.stdout = outF
@@ -1104,17 +1108,30 @@ def runEvolLatent(config, gene, pop_s, latent, cmaes=False, iterations=10, redir
                     print("Error! Stopping!")
                 return pop, log
 
-
+            config['preparation_done_iteration_%s' % iteration] = time.time()
             pop, logbook = runAlg(pop, logbook)
+            config['done_iteration_%s' % iteration] = time.time()
             save_results(logbook)
-            print('Best individuals:')
+            best_individuals = ''
+            best_individuals += 'Best individuals:\n'
+            decoded_hof = []
             for best in hof:
                 if latent == 'nolatent':
-                    print(best.fitness, '\t-->\t', best[0])
+                    best_individuals += (str(best.fitness) + '\t-->\t' + str(best[0]) + '\n')
+                    decoded_hof.append(best[0])
                 else:
                     fram = EM.decode_latents(np.expand_dims(best[0], axis=0))[0]
-                    print(best.fitness, '\t-->\t', fram)
-                    print(best[0])
+                    decoded_hof.append(fram)
+                    best_individuals += (str(best.fitness) + '\t-->\t' + str(fram) + '\n' + str(best[0]) + '\n')
+            print(best_individuals, flush=True)
+            config['hall_of_fame_str_iteration_%s' % iteration] = best_individuals
+            config['hall_of_fame_iteration_%s' % iteration] = hof
+            config['hall_of_fame_decoded_iteration_%s'] = decoded_hof
+            save_results(logbook)
+            to_del_keys = [k for k in config.keys() if str(iteration) in k]
+            for k in to_del_keys:
+                del config[k]
+
 
 
 #
