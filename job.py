@@ -103,8 +103,11 @@ mkdir_p(job_directory)
 mkdir_p(data_dir)
 
 
-def getPrimes(i):
+def getPrimes(l):
     while(True):
+        l[0] += 1
+        i=l[0]
+
         prime=True
         for a in range(2,i):
             if(i%a==0):
@@ -112,8 +115,8 @@ def getPrimes(i):
                 break
         if(prime):
             yield i
-
-primes = getPrimes(1000)
+l_prime = [1000]
+primes = getPrimes(l_prime)
 
 # 131 prime multiplication in placeholder - makes evolution use encoder
 additional_options_dict = [
@@ -207,7 +210,7 @@ for rep in options_representation:
                                     params.append(d)
 
 timestamp = time.time()
-print("ok, timestamp %s" % timestamp)
+print("ok, timestamp %s" % timestamp, 'max prime: %s' % l_prime)
 for param in params:
 
 
@@ -260,3 +263,5 @@ for param in params:
 print("ok")
 
 # nohup python3 -u $HOME/workspace/runFile.py model_f1_None_64_twoLayer_Bidir_3f_19 f1 None 64 twoLayer Bidir /home/inf126856/dataFolder2/model_f1_None_64_twoLayer_Bidir_3f_19 /home/inf126856/workspace/data FDC 3f 19 /home/inf126856/Framsticks50rc17 True latent 3 250 50 0 > f1_3f.out &
+
+# python3 $HOME/workspace/runFile.py model_f9_None_64_twoLayer_Bidir_3f_19 f9 None 64 twoLayer Bidir /home/inf126856/dataFolder2/model_f9_None_64_twoLayer_Bidir_3f_19 /home/inf126856/workspace/data evol 3f 19 /home/inf126856/Framsticks50rc17 True latent 3 250 50 98469734 1614570702.9045017

@@ -175,3 +175,4 @@ def get_config(model_name, representation, long_genos, cells, twoLayer, bidir, d
     config['let_not_newest_weights'] = True
     config['accuracy_target'] = 0.99
     return config
+
