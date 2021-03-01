@@ -29,7 +29,7 @@ all_labs = all_labs * 1000
 6. make sure paths are right:
 ~line 97:
 data_dir = os.path.join(home, 'dataFolder2')
-frams_path = os.path.join(home, 'Framsticks50rc18')
+frams_path = os.path.join(home, 'Framsticks50rc17')
 
 7. put as placeholder unique prime number (so your results and processes have unique ids - more important for evolution):
 specifying multiple dicts inside will run your config multiple times so if you wanted to go with different series of models (test or options_tests) you could do smth like:
@@ -63,10 +63,10 @@ c) we use appropriate model version (test), 'locality', representation
 
 d) for original representations: we use 'nolatent' and actual representation; we also have to specify locality even though it is not used (there is unnecessary processing of it) and some test -> there will be created fake model directory with this 'test' number for results from it;
 
-8. for PUT labs mincpus per machine = 2 should be safe here, ~line 221;
+8. for PUT labs mincpus per machine = 4 should be safe here, ~line 221;
 
 9. set how many times you want run each unique process, say 25 times:
-~line 60: task_evol_test_no = list((np.arange(25) + 1))
+~line 26: task_evol_test_no = list((np.arange(25) + 1))
 
 10. now look in runFile.py under, values here are mostly OK? don't need to change:
 ~line 57:

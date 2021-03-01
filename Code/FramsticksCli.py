@@ -496,7 +496,7 @@ if __name__ == "__main__":
     #    if not then print a message "framsreader not available, using simple internal method to save a genotype" and proceed as it is now.
     #    So far we don't read, but we should use the proper writer to handle all special cases like quoting etc.
 
-    framsCLI = FramsticksCLI('C:/Users/Piotr/Desktop/Framsticks50rc18', None, 'pid1233')
+    framsCLI = FramsticksCLI('C:/Users/Piotr/Desktop/Framsticks50rc17', None, 'pid1233')
 
     print("Sending a direct command to Framsticks CLI that calculates \"4\"+2 yields", repr(framsCLI.sendDirectCommand("Simulator.print(\"4\"+2);")))
 

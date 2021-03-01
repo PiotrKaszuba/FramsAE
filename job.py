@@ -13,17 +13,17 @@ def mkdir_p(dir):
 clear_files = 'True'
 
 # important options:
-options_representation = ['']
+options_representation = ['f1', 'f9']
 options_long_genos = ['None']
 options_cells = ['64']#, '56', '48']
 options_twoLayer = ['twoLayer']
 options_bidir = ['Bidir']
-options_locality = [""]
-options_tests = ['19'] #list(range(1))
+options_locality = ['0-0n', '3', '3f']
+options_tests = ['18', '19', '20'] #list(range(1))
 generations = '250'
 population_size = '50'
 tourney_size = '3' # 1 equals random search
-task_evol_test_no = list(range(1))
+task_evol_test_no = list((np.arange(80) + 1)) # max 99
 # task_evol_test_no = list((np.arange(1) + 1))
 # available options:
 tasks = ['train', 'evol', 'collect_data', 'evaluate_model', 'FDC']
@@ -31,7 +31,7 @@ types_of_run = ['locality_train', 'noloc_train', 'evol_autoencoders', 'evol_rand
 latents = ['nolatent', 'latent']
 
 task = tasks[1]
-type_of_run = types_of_run[4]
+type_of_run = types_of_run[2]
 latent = latents[1]
 # MAIN BRANCHES:
 if type_of_run == "locality_train":
@@ -57,14 +57,14 @@ elif type_of_run == 'evol_random':
     task_evol_test_no = list((np.arange(2)+1))
 elif type_of_run == 'mutDist_latent':
     latent = latents[1]
-    task_evol_test_no = list((np.arange(15) + 11))
+    task_evol_test_no = list((np.arange(25) + 11))
 # elif type_of_run == 'collect_data'
 
 
 
 
 # LAB settings
-all_labs = ['ci'] * 2 + ['43'] * 2  + ['45'] * 2  + ['44'] * 2
+all_labs = ['ci'] * 7 + ['43'] * 6  + ['45'] * 5  + ['44'] * 5
 all_labs = all_labs * 1000
 # nodes = []
 # Nodes settings
@@ -96,13 +96,25 @@ job_directory = "%s/job" % os.getcwd()
 read_directory = "%s/data" % os.getcwd()
 home = str(Path.home())
 data_dir = os.path.join(home, 'dataFolder2')
-frams_path = os.path.join(home, 'Framsticks50rc18')
+frams_path = os.path.join(home, 'Framsticks50rc17')
 # Make top level directories
 mkdir_p(job_directory)
 mkdir_p(data_dir)
 
 
+def getPrimes(i):
+    while(True):
+        prime=True
+        for a in range(2,i):
+            if(i%a==0):
+                prime=False
+                break
+        if(prime):
+            yield i
 
+primes = getPrimes(1000)
+
+# 131 prime multiplication in placeholder - makes evolution use encoder
 additional_options_dict = [
     # {'placeholder':13, 'latent':'latent'},
     # {'placeholder':17, 'latent':'nolatent'},
@@ -148,17 +160,18 @@ additional_options_dict = [
     # {'placeholder':811, 'test':19},
     # {'placeholder':821, 'test':20},
     # {'placeholder' : 823},
-    {'placeholder':863, 'latent':'nolatent', 'representation': 'f9' , 'locality': '0-0n', 'test':999,},
-    {'placeholder':877, 'latent': 'nolatent', 'representation': 'f1' , 'locality': '0-0n', 'test':999,},
+    # {'placeholder':863, 'latent':'nolatent', 'representation': 'f9' , 'locality': '0-0n', 'test':999,},
+    # {'placeholder':877, 'latent': 'nolatent', 'representation': 'f1' , 'locality': '0-0n', 'test':999,},
 
-    {'placeholder' : 827, 'latent' : 'latent', 'locality': '0-0n', 'test':19, 'representation':'f1',},
-    {'placeholder' : 829, 'latent' : 'latent', 'locality': '3', 'test':19, 'representation':'f1',},
-    {'placeholder' : 839, 'latent' : 'latent', 'locality': '3f', 'test':19, 'representation':'f1',},
-    {'placeholder' : 853, 'latent' : 'latent', 'locality': '0-0n', 'test':19, 'representation':'f9',},
-    {'placeholder' : 857, 'latent' : 'latent', 'locality': '3', 'test':19, 'representation':'f9',},
-    {'placeholder' : 859, 'latent' : 'latent', 'locality': '3f', 'test':19, 'representation':'f9',},
+    # {'placeholder' : 947, 'latent' : 'latent', 'locality': '0-0n', 'test':19, 'representation':'f1',},
+    # {'placeholder' : 953, 'latent' : 'latent', 'locality': '3', 'test':19, 'representation':'f1',},
+    # {'placeholder' : 967, 'latent' : 'latent', 'locality': '3f', 'test':19, 'representation':'f1',},
+    # {'placeholder' : 971, 'latent' : 'latent', 'locality': '0-0n', 'test':19, 'representation':'f9',},
+    # {'placeholder' : 977, 'latent' : 'latent', 'locality': '3', 'test':19, 'representation':'f9',},
+    # {'placeholder' : 983, 'latent' : 'latent', 'locality': '3f', 'test':19, 'representation':'f9',},
 
-
+    {'placeholder' : 131},
+    {'placeholder' : 1}
 
 ]
 
@@ -171,11 +184,12 @@ for rep in options_representation:
                 for bid in options_bidir:
                     for loc in options_locality:
                         for tes in options_tests:
+                            prime = next(primes)
                             for task_test in task_evol_test_no:
                                 for a_dict in additional_options_dict:
                                     d = {}
 
-
+                                    d['prime'] = prime
                                     d['representation'] = rep
                                     d['cells'] = cel
                                     d['twoLayer'] = lay
@@ -209,7 +223,8 @@ for param in params:
     # if not(representation == 'f9' and long_genos == 'long'):
     #     continue
     placeholder = param['placeholder']
-    task_tes = task_tes * placeholder
+    prime = param['prime']
+    task_tes = task_tes * placeholder * prime
     instance_name = "%s_%s" % (str(model_name), str(task_tes))
     jobname = "%s.job" % instance_name
     job_file = os.path.join(job_directory, jobname)
@@ -241,3 +256,5 @@ for param in params:
     os.system("stdbuf -o0 -e0 sbatch %s" % job_file)
     sleep(0.2)
 print("ok")
+
+# nohup python3 -u $HOME/workspace/runFile.py model_f1_None_64_twoLayer_Bidir_3f_19 f1 None 64 twoLayer Bidir /home/inf126856/dataFolder2/model_f1_None_64_twoLayer_Bidir_3f_19 /home/inf126856/workspace/data FDC 3f 19 /home/inf126856/Framsticks50rc17 True latent 3 250 50 0 > f1_3f.out &

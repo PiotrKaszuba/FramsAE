@@ -57,9 +57,9 @@ if __name__ == "__main__":
     if task == 'evol':
         # config['framsexe'] = 'frams-vs.exe'
         config['mut_magnitude'] = 0.2
-        config['evol_use_encoder'] = False #if task_test % 131 !=0 else True
+        config['evol_use_encoder'] = False if task_test % 131 !=0 else True
         config['evol_keepbest'] = True
-        config['cmaes'] = False # if task_test % 7 !=0 else True
+        config['cmaes'] = False# if task_test % 7 !=0 else True
 
         config['let_not_newest_weights'] = True
         redir_out = True

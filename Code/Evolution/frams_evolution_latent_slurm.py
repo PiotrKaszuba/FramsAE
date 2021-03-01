@@ -1035,7 +1035,7 @@ def runEvolLatent(config, gene, pop_s, latent, cmaes=False, iterations=10, redir
 
 
 
-    while iteration < max_iterations * (config['task_test']+1)-1:
+    while iteration < max_iterations * (config['task_test']) + iterations -1:
         iteration += 1
         with open(os.path.join(config['data_path'],'experiment_outFile_%s' % str(iteration)), 'w') as outF:
             if redir_out:

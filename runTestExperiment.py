@@ -58,7 +58,7 @@ def runProcess_evol(run, locality, test, fake_f=False, latent = 'latent', evol_u
     # config['max_len'] = 22
     # config['max_f1_len'] = 20
 
-    runEvolLatent(config, gene=gene, pop_s=pop, latent=latent, cmaes=config['cmaes'], iterations=50, redir_out=redir_out)
+    runEvolLatent(config, gene=gene, pop_s=pop, latent=latent, cmaes=config['cmaes'], iterations=1, redir_out=redir_out)
 
 def runProcess_mutDist(run, locality, test, fake_f=False, latent='latent', **kwargs):
     fake_fitness[0] = fake_f
@@ -191,13 +191,13 @@ number = 0
 add_params_dict = {}
 
 long_genos = None
-representation = 'f1'
+representation = 'f9'
 
 data_path = 'mods2/'
 load_dir = 'testGenos/'
 
 # locality = '3' # '0-0n'
-frams_path = 'C:/Users/Piotr/Desktop/Framsticks50rc18'
+frams_path = 'C:/Users/Piotr/Desktop/Framsticks50rc17'
 clear_files = 'True'
 
 if False:
@@ -284,7 +284,7 @@ add_params_dict['regularization_base_latent'] = 2e-6
 
 # runProcess_evol(57*8659, '3f', test, fake_f=False, latent='latent', evol_use_encoder=False, fake_m=True, redir_out=False, **add_params_dict)
 # runProcess_train(131*43, '3f', test, False, **add_params_dict)
-runProcess_evol(35271, '3f', '19', latent='nolatent', fake_m=True, redir_out=False, **add_params_dict)
+runProcess_evol(352*943, '3f', '19', latent='nolatent', fake_m=True, redir_out=False, **add_params_dict)
 # for i in [17, 19, 23]:
 # runProcess_mutDist(127*43*97, '0-0n', test, False, latent='nolatent', **add_params_dict)
 raise NotImplementedError()

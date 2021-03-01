@@ -33,13 +33,10 @@ def drawFDCs():
         data = pickle.load(file)
     # filter
     cells = '64'
-    repr = 'f1'
+    repr = 'f9'
     data = [(name, cr, cr_enc) for name, cr, cr_enc in data if repr in name]
     import matplotlib.pyplot as plt
-    import seaborn as sns
-    from mpl_toolkits.mplot3d.axes3d import Axes3D
-    from sklearn import preprocessing
-    import matplotlib.transforms as transforms
+
     corrs = {}
     for name, cr, cr_enc in data:
         loc = name.split("_")[6]
@@ -55,7 +52,7 @@ def drawFDCs():
         corrs[nam + 'sp'] = cr_enc
 
     fig = plt.figure(figsize=(6.4, 4.8))
-    ax = fig.add_subplot(111)  # , projection='3d')
+    ax = fig.add_subplot(111)
     vals = np.arange(len(corrs))
     corr_values_points = [cr + 0.05 for cr in corrs.values()]
     points = list(zip(list(vals - 0.25), corr_values_points))
@@ -66,7 +63,7 @@ def drawFDCs():
     ax.scatter(vals, list(corrs.values()), s=30)
     # plt.title('Finess distance correlation for %s models' % repr, fontsize=12)
     plt.ylabel("Fitness distance correlation", fontsize=12, labelpad=10)
-    plt.xlabel("%s models with different numbers of LSTM cells" % repr, fontsize=12, labelpad=10)
+    plt.xlabel("%s models" % repr, fontsize=12, labelpad=10)
     plt.tick_params(
         axis='x',  # changes apply to the x-axis
         which='both',  # both major and minor ticks are affected
@@ -96,13 +93,19 @@ def runFDCforModel(name, data_folder):
         df = pd.DataFrame()
 
         for f in glob.glob(path_base, recursive=True):
-            with open(f, 'rb') as file:
-                df_temp = pd.DataFrame(pickle.load(file))
+            try:
+                with open(f, 'rb') as file:
+                    df_temp = pd.DataFrame(pickle.load(file))
+            except Exception as e:
+                print(e, f)
 
+                continue
             dirr, filename = os.path.split(f)
             dirr, model_name = os.path.split(dirr)
             if name is not None and name != model_name:
+                print("skipping: ", f)
                 continue
+            print("accepting: ", f)
             if not filename.startswith("model"):
 
                 model_params = model_name.split('_')
