@@ -5,6 +5,7 @@ from pathlib import Path
 from time import sleep
 import numpy as np
 import time
+import random
 def mkdir_p(dir):
     '''make a directory (dir) if it doesn't exist'''
     if not os.path.exists(dir):
@@ -24,7 +25,7 @@ options_tests = ['18', '19', '20'] #list(range(1))
 generations = '250'
 population_size = '50'
 tourney_size = '3' # 1 equals random search
-task_evol_test_no = list((np.arange(80) + 1)) # max 99
+task_evol_test_no = list((np.arange(30) + 1)) # max 99
 # task_evol_test_no = list((np.arange(1) + 1))
 # available options:
 tasks = ['train', 'evol', 'collect_data', 'evaluate_model', 'FDC']
@@ -192,7 +193,6 @@ for rep in options_representation:
                             for task_test in task_evol_test_no:
                                 for a_dict in additional_options_dict:
                                     d = {}
-
                                     d['prime'] = prime
                                     d['representation'] = rep
                                     d['cells'] = cel
@@ -211,6 +211,7 @@ for rep in options_representation:
 
 timestamp = time.time()
 print("ok, timestamp %s" % timestamp, 'max prime: %s' % l_prime)
+random.shuffle(params)
 for param in params:
 
 
